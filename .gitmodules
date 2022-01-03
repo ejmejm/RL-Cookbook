@@ -1,0 +1,3 @@
+[submodule "agents/Rainbow"]
+	path = agents/Rainbow
+	url = https://github.com/ejmejm/Rainbow.git
