@@ -1,16 +1,19 @@
 #import abc and abstractmethod
 from abc import ABC, abstractmethod
 
-from gym import spaces
 import numpy as np
 import torch
+from torch import nn
+
+from ..envs import TransitionData
+
 
 class BaseAgent(ABC):
   @abstractmethod
   def sample_act(self, obs):
     pass
 
-  def process_step_data(self, data):
+  def process_step_data(self, data: TransitionData):
     pass
 
   def end_step(self):
@@ -24,6 +27,38 @@ class BaseAgent(ABC):
 
   def end_task(self):
     pass
+
+
+class BaseRepresentationLearner(ABC):
+  def __init__(self, model=None, batch_size=32, update_freq=32):
+    if model is None:
+      self._init_model()
+    else:
+      self.model = model
+
+    self.batch_size = batch_size
+    self.update_freq = update_freq
+    
+  @abstractmethod
+  def _init_model(self, *args, **kwargs):
+    pass
+
+  @abstractmethod
+  def train(self, batch_data):
+    pass
+
+# # Decorator for methods to support representation
+# def representation_training()
+
+
+class TestRL(BaseRepresentationLearner):
+  def __init__(self, agent):
+    super().__init__(agent)
+    self.a = None
+
+  def train(self, data):
+    self.a = data
+
 
 
 class ExperienceBufferMixin():
@@ -59,28 +94,29 @@ class ExperienceBufferMixin():
     return element_tensors
 
 
-class EzExplorerAgent(BaseAgent):
-  def __init__(self, env, min_repeat=1, max_repeat=6):
-    if type(env.action_space) != spaces.Discrete:
-      raise Exception('EzExplorerAgent only supports discrete action spaces!')
-
-    self.n_acts = env.action_space.n
-    self.min_repeat = min_repeat
-    self.max_repeat = max_repeat
-
-    self.curr_act = None
-    self.repeats_left = 0
-
-  def sample_act(self):
-    if self.repeats_left > 0:
-      self.repeats_left -= 1
-      return self.curr_act
+def create_basic_fe_model(layer_type='conv', input_dim=None):
+  """
+  Initializes a basic feature extractor
+  
+  Args:
+    layer_type: 'conv' or 'linear'
+    input_dim: (int) size of input (or number of channels)
     
-    self.curr_act = np.random.randint(0, self.n_acts + 1)
-    self.repeats_left = np.random.randint(
-        self.min_repeat - 1, self.max_repeat)
-    return self.curr_act
-
-  def end_episode(self):
-    self.curr_act = None
-    self.repeats_left = 0
+  Returns:
+    model: torch.nn.Module
+  """
+  if layer_type == 'linear':
+    return nn.Sequential(
+      nn.Linear(input_dim, 256),
+      nn.ReLU(),
+      nn.Linear(256, 128),
+      nn.ReLU(),
+      nn.Linear(128, 64))
+  elif layer_type == 'conv':
+    return nn.Sequential(
+          nn.Conv2d(input_dim, 8, 4, 2),
+          nn.ReLU(),
+          nn.Conv2d(8, 16, 3, 1),
+          nn.ReLU(),
+          nn.Flatten())
+  raise Exception('Invalid layer type!')

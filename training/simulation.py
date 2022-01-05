@@ -8,7 +8,7 @@ def train_exploration_model(agent: BaseAgent, env, n_steps):
   while step_idx < n_steps:
     act = agent.sample_act(obs)
     next_obs, _, done, _ = env.step(act)
-    agent.process_step_data([obs, act, next_obs, done])
+    agent.process_step_data([obs, act, None, next_obs, done])
 
     if done:
       agent.end_episode()

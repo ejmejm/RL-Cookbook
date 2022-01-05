@@ -3,14 +3,18 @@ import copy
 from gym import spaces
 import numpy as np
 import torch
+from torch.nn import functional as F
 
 from .Rainbow import Agent
 from .Rainbow import ReplayMemory as RainbowMemory
 from .base import BaseAgent
 
 class RainbowAgent(BaseAgent):
-  def __init__(self, args, env, custom_encoder=None):
+  def __init__(self, args, env, custom_encoder=None, repr_learner=None):
     self.args = args
+    self.env = env
+    self.repr_learner = repr_learner
+
     if torch.cuda.is_available() and not self.args.disable_cuda:
       self.args.device = torch.device('cuda')
       torch.cuda.manual_seed(np.random.randint(1, 10000))
@@ -22,7 +26,6 @@ class RainbowAgent(BaseAgent):
     env = copy.copy(env)
     if type(env.action_space) != spaces.Discrete:
       raise Exception('Rainbow only supports discrete action spaces!')
-    self.env = env
     self.obs_dim = list(self.env.observation_space.shape)
 
     # Step seeds
@@ -51,6 +54,13 @@ class RainbowAgent(BaseAgent):
 
     self.last_update_episode = 0
     self.step_idx = 1
+
+  def train_representation(self):
+    # TODO: This needs to be made into an unweighted sampling
+    _, obs, acts, returns, next_obs, _, nonterminals = self.mem.sample(self.repr_learner.batch_size)
+    acts = F.one_hot(acts, self.env.action_space.n)
+    dones = 1 - nonterminals
+    self.repr_learner.train(list(zip(obs, acts, returns, next_obs, dones)))
 
   def sample_act(self, obs):
     if self.step_idx % self.args.replay_frequency == 0:
@@ -96,5 +106,11 @@ class RainbowAgent(BaseAgent):
       # Update target network
       if self.step_idx % self.args.target_update == 0:
         self.dqn.update_target_net()
+
+      # Train representation network
+      if self.repr_learner is not None and \
+          self.step_idx % self.repr_learner.update_freq == 0:
+        print('Repr training')
+        self.train_representation()
 
     self.step_idx += 1
