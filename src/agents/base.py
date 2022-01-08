@@ -30,7 +30,7 @@ class BaseAgent(ABC):
 
 
 class BaseRepresentationLearner(ABC):
-  def __init__(self, model=None, batch_size=32, update_freq=32):
+  def __init__(self, model=None, batch_size=32, update_freq=32, log_freq=100):
     if model is None:
       self._init_model()
     else:
@@ -38,7 +38,8 @@ class BaseRepresentationLearner(ABC):
 
     self.batch_size = batch_size
     self.update_freq = update_freq
-    
+    self.log_freq = log_freq
+
   @abstractmethod
   def _init_model(self, *args, **kwargs):
     pass
@@ -47,51 +48,44 @@ class BaseRepresentationLearner(ABC):
   def train(self, batch_data):
     pass
 
-# # Decorator for methods to support representation
-# def representation_training()
-
-
-class TestRL(BaseRepresentationLearner):
-  def __init__(self, agent):
-    super().__init__(agent)
-    self.a = None
-
-  def train(self, data):
-    self.a = data
-
-
 
 class ExperienceBufferMixin():
   def __init__(self, max_size=int(1e6)):
-    self.buffer = []
+    self.exp_buffer = []
     self.max_size = max_size
 
   def _fix_size(self):
-    self.buffer = self.buffer[-self.max_size:]
+    self.exp_buffer = self.exp_buffer[-self.max_size:]
 
-  def append_data(self, data):
-    self.buffer.append(data)
+  def append_buffer(self, data):
+    self.exp_buffer.append(data)
     self._fix_size()
 
-  def extend_data(self, data):
-    self.buffer.extend(data)
+  def extend_buffer(self, data):
+    self.exp_buffer.extend(data)
     self._fix_size()
 
-  def sample(self, n, replace=False):
+  def sample_buffer(self, n, replace=False):
     # Sample indices
-    data_idxs = np.random.choice(range(len(self.buffer)),
+    data_idxs = np.random.choice(range(len(self.exp_buffer)),
                                  size=n, replace=replace)
     batch_data = []
     for i in data_idxs:
-      batch_data.append(self.buffer[i])
+      batch_data.append(self.exp_buffer[i])
 
     # Create separate np arrays for each element
-    batch_data = np.array(batch_data)
     element_tensors = \
-      [torch.from_numpy(np.stack(batch_data[:, i])) \
-      for i in range(batch_data.shape[1])]
+      [torch.stack([torch.tensor(se, dtype=torch.float32) for se in e], \
+        dim=0) for e in zip(*batch_data)]
+    # batch_data = np.array(batch_data)
+    # element_tensors = \
+    #   [torch.from_numpy(np.stack(batch_data[:, i])) \
+    #   for i in range(batch_data.shape[1])]
     
     return element_tensors
+  
+  def buffer_size(self):
+    return len(self.exp_buffer)
 
 
 def create_basic_fe_model(layer_type='conv', input_dim=None):

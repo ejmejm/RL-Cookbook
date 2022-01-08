@@ -60,7 +60,7 @@ class RainbowAgent(BaseAgent):
     _, obs, acts, returns, next_obs, _, nonterminals = self.mem.sample(self.repr_learner.batch_size)
     acts = F.one_hot(acts, self.env.action_space.n)
     dones = 1 - nonterminals
-    self.repr_learner.train(list(zip(obs, acts, returns, next_obs, dones)))
+    self.repr_learner.train([obs, acts, returns, next_obs, dones])
 
   def sample_act(self, obs):
     if self.step_idx % self.args.replay_frequency == 0:
@@ -110,7 +110,6 @@ class RainbowAgent(BaseAgent):
       # Train representation network
       if self.repr_learner is not None and \
           self.step_idx % self.repr_learner.update_freq == 0:
-        print('Repr training')
         self.train_representation()
 
     self.step_idx += 1
