@@ -18,12 +18,13 @@ class NextStatePredReprLearner(BaseRepresentationLearner):
       update_freq: int = 32,
       lr: float = 1e-3):
     super().__init__(model, batch_size, update_freq)
+    self.encoder = self.model.encoder
     self.optimizer = optim.Adam(self.model.parameters(), lr=lr)
     
   def _init_model(self):
     raise Exception('Next state prediction requires a model to be specified!')
 
-  def train(self, batch_data: list[TransitionData]):
+  def calculate_losses(self, batch_data):
     device = next(self.model.parameters()).device
     
     obs, acts, _, next_obs, _ = \
@@ -31,7 +32,15 @@ class NextStatePredReprLearner(BaseRepresentationLearner):
         dim=0).to(device) for e in zip(*batch_data)]
 
     next_obs_pred = self.model(obs, acts)
-    loss = F.mse_loss(next_obs_pred, next_obs)
+    losses = (next_obs - next_obs_pred) ** 2
+    while len(losses.shape) > 2:
+      losses = losses.mean(dim=-1)
+    
+    return losses
+
+  def train(self, batch_data: list[TransitionData]):
+    losses = self.calculate_loss(batch_data)
+    loss = losses.mean()
 
     self.optimizer.zero_grad()
     loss.backward()
@@ -46,22 +55,18 @@ class SFPredictor(BaseRepresentationLearner):
       model: nn.Module,
       batch_size: int = 32,
       update_freq: int = 16,
-      log_freq = 100,
+      log_freq: int = 100,
       target_net_update_freq: int = 64,
       discount_factor: float = 0.99,
       lr: float = 1e-3):
     super().__init__(model, batch_size, update_freq, log_freq)
-
-    # Need 'encode_obs' method for SF predictor model
-    assert hasattr(self.model, 'encode_obs'), \
-      'Model must have an encode_obs method!'
 
     self.discount_factor = discount_factor
     self.target_net_update_freq = target_net_update_freq
     self.optimizer = optim.Adam(self.model.parameters(), lr=lr)
     self._update_target_model()
     self.train_step_idx = 0
-    
+
   def _init_model(self):
     raise Exception('Next state prediction requires a model to be specified!')
 
@@ -70,7 +75,7 @@ class SFPredictor(BaseRepresentationLearner):
     for param in self.target_model.parameters():
       param.requires_grad = False
 
-  def train(self, batch_data):
+  def calculate_losses(self, batch_data):
     device = next(self.model.parameters()).device
 
     # Expects batch_data to be [obs, acts, rewards, next_obs, terminals]
@@ -81,15 +86,20 @@ class SFPredictor(BaseRepresentationLearner):
     self.target_model.train()
 
     with torch.no_grad():
-      belief_state = self.target_model.encode_obs(obs)
+      belief_state = self.target_model.encoder(obs)
       _, next_sfs = self.target_model(next_obs)
       target_sfs = belief_state + self.discount_factor * next_sfs
 
     # TODO: Add policy as input to this model
     _, sf_preds = self.model(obs)
 
-    loss = torch.sum((target_sfs - sf_preds) ** 2, dim=-1)
-    loss = loss.mean()
+    losses = torch.sum((target_sfs - sf_preds) ** 2, dim=-1)
+
+    return losses
+
+  def train(self, batch_data):
+    losses = self.calculate_losses(batch_data)
+    loss = losses.mean()
 
     self.optimizer.zero_grad()
     loss.backward()

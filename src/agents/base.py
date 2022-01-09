@@ -36,12 +36,20 @@ class BaseRepresentationLearner(ABC):
     else:
       self.model = model
 
+    assert hasattr(self.model, 'encoder'), \
+      'Model must have an encoder!'
+
+    self.encoder = self.model.encoder
     self.batch_size = batch_size
     self.update_freq = update_freq
     self.log_freq = log_freq
 
   @abstractmethod
   def _init_model(self, *args, **kwargs):
+    pass
+
+  @abstractmethod
+  def calculate_losses(self, batch_data):
     pass
 
   @abstractmethod
