@@ -80,16 +80,19 @@ class ExperienceBufferMixin():
     batch_data = []
     for i in data_idxs:
       batch_data.append(self.exp_buffer[i])
-
     # Create separate np arrays for each element
     element_tensors = \
       [torch.stack([torch.tensor(se, dtype=torch.float32) for se in e], \
         dim=0) for e in zip(*batch_data)]
-    # batch_data = np.array(batch_data)
-    # element_tensors = \
-    #   [torch.from_numpy(np.stack(batch_data[:, i])) \
-    #   for i in range(batch_data.shape[1])]
-    
+
+    return element_tensors
+
+  def get_buffer_recent_data(self, n):
+    batch_data = self.exp_buffer[-n:]
+    # Create separate np arrays for each element
+    element_tensors = \
+      [torch.stack([torch.tensor(se, dtype=torch.float32) for se in e], \
+        dim=0) for e in zip(*batch_data)]
     return element_tensors
   
   def buffer_size(self):

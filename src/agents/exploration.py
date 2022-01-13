@@ -1,5 +1,6 @@
 from torch._C import Value
 from .base import BaseAgent, BaseRepresentationLearner, ExperienceBufferMixin
+from ..envs.data import RewardNormalizer
 
 from gym import spaces
 import numpy as np
@@ -75,23 +76,37 @@ class EzExplorerAgent(BaseAgent, ExperienceBufferMixin, ReprLearningMixin):
 
 
 class SurprisalExplorerAgent(BaseAgent, ExperienceBufferMixin, ReprLearningMixin):
-  def __init__(self, env, policy, repr_learner, batch_size=32,
-               update_freq=16, log_freq=100, epsilon=0.05, lr=3e-4):
+  def __init__(self, env, policy, critic, repr_learner, batch_size=32,
+               update_freq=128, log_freq=100, epsilon=0.05, lr=3e-4,
+               gamma=0.99, ppo_iters=20, ppo_clip=0.2, normalize_rewards=True):
     ReprLearningMixin.__init__(self, env, repr_learner)
     super().__init__()
 
-    self.optim_type = 'SUPERVISED' # 'REINFORCE'
+    assert batch_size <= update_freq, 'Batch size must be <= update freq!'
 
     self.policy = policy
+    self.critic = critic
     self.batch_size = batch_size
     self.update_freq = update_freq
     self.log_freq = log_freq
-    self.policy_device = next(self.policy.parameters()).device
+    self.device = next(self.policy.parameters()).device
     self.epsilon = epsilon
+    self.gamma = gamma
+    self.ppo_iters = ppo_iters
+    self.ppo_clip = ppo_clip
     self.policy_losses = []
+    self.critic_losses = []
+    self.extrinsic_rewards = []
+    self.intrinsic_rewards = []
     self.step_idx = 1
 
-    self.optimizer = optim.Adam(self.policy.parameters(), lr=lr)
+    if normalize_rewards:
+      self.reward_normalizer = RewardNormalizer()
+    else:
+      self.reward_normalizer = None
+
+    self.optimizer = optim.Adam(list(self.policy.parameters()) \
+      + list(self.critic.parameters()), lr=lr)
 
   def process_step_data(self, transition_data):
     self.process_repr_step_data(transition_data)
@@ -101,60 +116,120 @@ class SurprisalExplorerAgent(BaseAgent, ExperienceBufferMixin, ReprLearningMixin
     if np.random.rand() < self.epsilon:
       return np.random.randint(0, self.n_acts)
 
-    obs = torch.tensor(obs, dtype=torch.float32, device=self.policy_device)
+    obs = torch.tensor(obs, dtype=torch.float32, device=self.device)
     obs = obs.unsqueeze(0)
     with torch.no_grad():
       logits = self.policy(obs)
     probs = F.softmax(logits, dim=-1).cpu().numpy()[0]
     return np.random.choice(self.n_acts, p=probs)
 
-  def train_policy(self):
-    replace = self.buffer_size() < self.batch_size
-    batch_data = self.sample_buffer(self.batch_size, replace)
-    obs, act_idxs, rewards, next_obs, dones = batch_data
-    acts = F.one_hot(act_idxs.long(), self.n_acts)
+  def prepare_recent_batch_data(self):
+    batch_data = self.get_buffer_recent_data(self.update_freq)
+    batch_data = [torch.tensor(e, dtype=torch.float32) \
+       for e in batch_data]
+    batch_data[1] = batch_data[1].long()
+    return batch_data
 
-    obs, acts, _, next_obs, _ = \
-      [torch.tensor(e, dtype=torch.float32).to(self.policy_device) \
-        for e in (obs, acts, rewards, next_obs, dones)]
-    
+  def train(self):
     self.policy.train()
 
-    logits = self.policy(obs)
-    act_idxs = torch.tensor(act_idxs, dtype=torch.long).to(self.policy_device)
+    batch_data = self.prepare_recent_batch_data()
+    _, _, extrinsic_rewards, next_obs, dones = batch_data
 
+    # Calculate intrinsic rewards and returns
     with torch.no_grad():
       repr_losses = self.repr_learner.calculate_losses(batch_data)
+    intrinsic_rewards = repr_losses
+    # intrinsic_rewards = extrinsic_rewards
+    if self.reward_normalizer is not None:
+      intrinsic_rewards = self.reward_normalizer.normalize(intrinsic_rewards)
 
-    if self.optim_type == 'SUPERVISED':
-      act_logits = logits.gather(1, act_idxs.unsqueeze(1)).squeeze(1)
-      losses = (repr_losses - act_logits) ** 2
-    elif self.optim_type == 'REINFORCE':
-      rewards = repr_losses
-      probs = F.softmax(logits, dim=-1)
-      act_probs = probs.gather(1, act_idxs.unsqueeze(1))
-      losses = -torch.log(act_probs) * rewards
-    else:
-      raise ValueError('Unknown optimization type!')
+    # Bootstrap rewards if episode is not done
+    if not dones[-1]:
+      dones[-1] = 1
+      next_value = self.critic(next_obs[-1:].to(self.device)).squeeze()
+      next_value = next_value.detach().cpu()
+      intrinsic_rewards[-1] += self.gamma * next_value
 
-    # print(act_logits.shape, repr_losses.shape, 'SHOULD BE THE SAME SHAPE')
+    # Calculate returns
+    returns = torch.zeros(len(intrinsic_rewards))
+    returns[-1] = intrinsic_rewards[-1]
+    for i in range(len(intrinsic_rewards)-2, -1, -1):
+      returns[i] = intrinsic_rewards[i] + self.gamma * returns[i+1] * (1 - dones[i])
       
-    loss = losses.mean()
-    self.policy_losses.append(loss.item())
+    obs, acts, _, _, _ = [e.to(self.device) for e in batch_data]
+    returns = returns.to(self.device)
 
-    self.optimizer.zero_grad()
-    loss.backward()
-    self.optimizer.step()
+    with torch.no_grad():
+      values = self.critic(obs).squeeze(1)
+      advantages = returns - values
+      logits = self.policy(obs)
+    probs = F.softmax(logits, dim=-1)
+    old_act_probs = probs.gather(1, acts.unsqueeze(1)).squeeze(1)
 
-    return loss.item()
+    train_data = {
+      'obs': obs,
+      'act': acts,
+      'old_act_probs': old_act_probs,
+      'old_values': values,
+      'advantages': advantages,
+      'returns': returns}
+
+    policy_losses = []
+    critic_losses = []
+    for _ in range(self.ppo_iters):
+      zipped_buffer = list(zip(*train_data.values()))
+      np.random.shuffle(zipped_buffer)
+      train_buffer = list(zip(*zipped_buffer))
+      train_data = {k: torch.stack(v) for k, v in \
+        zip(train_data.keys(), train_buffer)}
+
+      # Break the data into mini-batches for the model updates
+      for batch_idx in range(int(np.ceil(len(train_data['obs']) / self.batch_size))):
+        minibatch = {k: v[batch_idx * self.batch_size: \
+          (batch_idx + 1) * self.batch_size] \
+          for k, v in train_data.items()}
+          
+        # Calculate new action probabilities and values for the epoch
+        new_values = self.critic(minibatch['obs'])
+        new_act_probs = F.softmax(self.policy(minibatch['obs']), dim=-1)
+        new_act_probs = new_act_probs.gather(1, minibatch['act'].unsqueeze(1))
+        new_act_probs = new_act_probs.squeeze(1)
+        new_values = new_values.squeeze(1)
+
+        # Calulcate the value loss
+        value_loss = F.mse_loss(new_values, minibatch['returns'])
+
+        # Calculate the policy loss
+        policy_ratio = new_act_probs / (minibatch['old_act_probs'] + 1e-7)
+        clipped_policy_ratio = torch.clamp(policy_ratio, 1 - self.ppo_clip, 1 + self.ppo_clip)
+        policy_loss = torch.min(policy_ratio * minibatch['advantages'],
+          clipped_policy_ratio * minibatch['advantages'])
+        policy_loss = -policy_loss.mean()
+
+        total_loss = policy_loss + value_loss
+
+        policy_losses.append(total_loss.item())
+        critic_losses.append(value_loss.item())
+
+        # Update the model
+        self.optimizer.zero_grad()
+        total_loss.backward()
+        self.optimizer.step()
+
+    self.policy_losses.append(np.mean(policy_losses))
+    self.critic_losses.append(np.mean(critic_losses))
+
+    return np.mean(policy_losses) + np.mean(critic_losses)
 
   def end_step(self):
     # Perform a training step
     if self.step_idx % self.update_freq == 0:
-      self.train_policy()
+      self.train()
 
     # Log policy stats
     if len(self.policy_losses) >= self.log_freq:
-      print('Step: {} | Policy loss: {:.4f}'.format(
-          self.step_idx, np.mean(self.policy_losses)))
+      print('Step: {} | Policy loss: {:.4f} | Critic loss: {:.4f}'.format(
+          self.step_idx, np.mean(self.policy_losses), np.mean(self.critic_losses)))
       self.policy_losses = []
+      self.critic_losses = []

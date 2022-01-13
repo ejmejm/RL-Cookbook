@@ -3,7 +3,7 @@ from torch import nn
 
 def create_gridworld_convs(n_channels=1):
   return nn.Sequential(
-        nn.Conv2d(n_channels, 8, 4, 2),
+        nn.Conv2d(n_channels, 8, 3, 1),
         nn.ReLU(),
         nn.Conv2d(8, 16, 3, 1),
         nn.ReLU(),

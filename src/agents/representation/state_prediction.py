@@ -46,8 +46,6 @@ class NextStatePredReprLearner(BaseRepresentationLearner):
     loss.backward()
     self.optimizer.step()
 
-    print(loss.item())
-
     
 class SFPredictor(BaseRepresentationLearner):
   def __init__(
