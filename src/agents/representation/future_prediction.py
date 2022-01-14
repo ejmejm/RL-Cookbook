@@ -10,12 +10,12 @@ from ..base import BaseAgent, BaseRepresentationLearner
 from ...envs import TransitionData
 
 
-class NextStatePredReprLearner(BaseRepresentationLearner):
+class NextStatePredictor(BaseRepresentationLearner):
   def __init__(
       self,
       model: nn.Module,
-      batch_size: int = 32,
-      update_freq: int = 32,
+      batch_size: int = 256,
+      update_freq: int = 128,
       lr: float = 1e-3):
     super().__init__(model, batch_size, update_freq)
     self.encoder = self.model.encoder
@@ -28,8 +28,7 @@ class NextStatePredReprLearner(BaseRepresentationLearner):
     device = next(self.model.parameters()).device
     
     obs, acts, _, next_obs, _ = \
-      [torch.stack([torch.tensor(se, dtype=torch.float32) for se in e], \
-        dim=0).to(device) for e in zip(*batch_data)]
+      [torch.tensor(e, dtype=torch.float32).to(device) for e in batch_data]
 
     next_obs_pred = self.model(obs, acts)
     losses = (next_obs - next_obs_pred) ** 2
@@ -39,7 +38,7 @@ class NextStatePredReprLearner(BaseRepresentationLearner):
     return losses
 
   def train(self, batch_data: list[TransitionData]):
-    losses = self.calculate_loss(batch_data)
+    losses = self.calculate_losses(batch_data)
     loss = losses.mean()
 
     self.optimizer.zero_grad()
@@ -51,8 +50,8 @@ class SFPredictor(BaseRepresentationLearner):
   def __init__(
       self,
       model: nn.Module,
-      batch_size: int = 32,
-      update_freq: int = 16,
+      batch_size: int = 256,
+      update_freq: int = 128,
       log_freq: int = 100,
       target_net_update_freq: int = 64,
       discount_factor: float = 0.99,
@@ -86,6 +85,7 @@ class SFPredictor(BaseRepresentationLearner):
     with torch.no_grad():
       belief_state = self.target_model.encoder(obs)
       _, next_sfs = self.target_model(next_obs)
+      # TODO: Add in dones
       target_sfs = belief_state + self.discount_factor * next_sfs
 
     # TODO: Add policy as input to this model

@@ -10,7 +10,7 @@ from .Rainbow import ReplayMemory as RainbowMemory
 from .base import BaseAgent
 
 class RainbowAgent(BaseAgent):
-  def __init__(self, args, env, custom_encoder=None, repr_learner=None):
+  def __init__(self, env, args, custom_encoder=None, repr_learner=None):
     self.args = args
     self.env = env
     self.repr_learner = repr_learner

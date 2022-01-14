@@ -1,4 +1,3 @@
-from torch._C import Value
 from .base import BaseAgent, BaseRepresentationLearner, ExperienceBufferMixin
 from ..envs.data import RewardNormalizer
 
