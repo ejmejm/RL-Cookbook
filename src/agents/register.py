@@ -6,7 +6,7 @@ from torch import nn
 
 from .base import BaseRepresentationLearner
 from .representation import NextStatePredictor, SFPredictor
-from .exploration import EzExplorerAgent, SurprisalExplorerAgent
+from .exploration import EzExplorerAgent, MaxEntropyExplorerAgent, SurprisalExplorerAgent
 from .rainbow import RainbowAgent
 from .Rainbow import DEFAULT_RAINBOW_ARGS
 from ..models import SFNetwork, PolicyNetwork, CriticNetwork, StatePredictionModel
@@ -27,20 +27,29 @@ REPR_LEARNERS = {
 }
 
 EXPLORATION_AGENTS = {
-    'EzExplorerAgent': lambda env, args, repr_learner: 
+    'EzExplore': lambda env, args, repr_learner: 
         EzExplorerAgent(env, repr_learner=repr_learner, **args['exp_agent_args']),
-    'SurprisalExplorerAgent': lambda env, args, repr_learner:
+    'Surprisal': lambda env, args, repr_learner:
         SurprisalExplorerAgent(
             env,
             PolicyNetwork(list(env.observation_space.shape), env.action_space.n) \
                 .to(args['device']),
             CriticNetwork(list(env.observation_space.shape)).to(args['device']),
             repr_learner,
+            **args['exp_agent_args']),
+    'MaxEntropy': lambda env, args, repr_learner:
+        MaxEntropyExplorerAgent(
+            env,
+            PolicyNetwork(list(env.observation_space.shape), env.action_space.n) \
+                .to(args['device']),
+            CriticNetwork(list(env.observation_space.shape)).to(args['device']),
+            repr_learner,
+            device = args['device'],
             **args['exp_agent_args'])
 }
 
 TASK_AGENTS = {
-    'RainbowAgent': lambda env, args, encoder, repr_learner:
+    'Rainbow': lambda env, args, encoder, repr_learner:
         RainbowAgent(
             env,
             dict_to_args(combine_args(DEFAULT_RAINBOW_ARGS.__dict__,

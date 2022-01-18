@@ -69,7 +69,7 @@ class PPOAgent(BaseAgent, ExperienceBufferMixin):
     batch_data = self.prepare_recent_batch_data()
     _, _, rewards, next_obs, dones = batch_data
     if self.calculate_rewards is not None:
-        rewards = self.calculate_rewards(batch_data)
+        rewards = self.calculate_rewards(batch_data).cpu()
 
     if self.reward_normalizer is not None:
       rewards = self.reward_normalizer.normalize(rewards)

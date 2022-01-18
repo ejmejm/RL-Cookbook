@@ -1,8 +1,8 @@
 from .base import BaseAgent, BaseRepresentationLearner, ExperienceBufferMixin
 from .ppo import PPOAgent
-from ..envs.data import RewardNormalizer
 
 from gym import spaces
+from einops import rearrange
 import numpy as np
 import torch
 from torch.nn import functional as F
@@ -89,3 +89,39 @@ class SurprisalExplorerAgent(PPOAgent, ReprLearningMixin):
     with torch.no_grad():
       repr_losses = self.repr_learner.calculate_losses(batch_data)
     return repr_losses
+
+class MaxEntropyExplorerAgent(PPOAgent, ReprLearningMixin):
+  def __init__(self, env, policy, critic, repr_learner, knn_k=5,
+               device=torch.device('cuda'), **kwargs):
+    ReprLearningMixin.__init__(self, env, repr_learner)
+    PPOAgent.__init__(self, env, policy, critic,
+      calculate_rewards=self.calculate_ppo_rewards,
+      **kwargs)
+
+    self.knn_k = knn_k
+    self.device = device
+
+  def process_step_data(self, transition_data):
+    PPOAgent.process_step_data(self, transition_data)
+    self.process_repr_step()
+
+  def calculate_ppo_rewards(self, batch_data):
+    obs = batch_data[0]
+    repr_device = next(self.repr_learner.encoder.parameters()).device
+    with torch.no_grad():
+      latent_states = self.repr_learner.encoder(obs.to(repr_device))
+    if repr_device != self.device:
+      latent_states = latent_states.to(self.device)
+
+    # Source: https://github.com/rll-research/url_benchmark/blob/bb98f0c6d78b3c467fb5a9fa5bbba3b7c0250397/utils.py#L289
+    # (b1, 1, c) - (1, b2, c) -> (b1, 1, c) - (1, b2, c) -> (b1, b2, c) -> (b1, b2)
+    sim_matrix = torch.norm(
+      rearrange(latent_states, 'b d -> b 1 d') -
+      rearrange(latent_states, 'b d -> 1 b d'),
+      dim=-1, p=2)
+    neighbor_diffs, _ = sim_matrix.topk(
+      self.knn_k, dim=-1, largest=False, sorted=False) # (b, k)
+    rewards = torch.log(1 + neighbor_diffs.mean(dim=-1))
+    rewards = rewards.cpu()
+
+    return rewards

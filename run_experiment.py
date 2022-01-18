@@ -13,9 +13,9 @@ from src.envs.creation import make_env
 # Create arguments for the environent, exporation agent, representation learner, and training agent
 parser = argparse.ArgumentParser()
 parser.add_argument('--env', type=str, default='Gridworld') # 'CrazyClimberNoFrameskip-v4'
-parser.add_argument('--exp_agent', type=str, default='EzExplorerAgent')
+parser.add_argument('--exp_agent', type=str, default='EzExplore')
 parser.add_argument('--repr_learner', type=str, default='SFPredictor')
-parser.add_argument('--task_agent', type=str, default='RainbowAgent')
+parser.add_argument('--task_agent', type=str, default='Rainbow')
 parser.add_argument('--device', type=str, default='cuda')
 parser.add_argument('--explore_steps', type=int, default=int(1e5))
 parser.add_argument('--task_steps', type=int, default=int(1e5))
