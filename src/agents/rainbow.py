@@ -4,13 +4,14 @@ from gym import spaces
 import numpy as np
 import torch
 from torch.nn import functional as F
+import wandb
 
 from .Rainbow import Agent
 from .Rainbow import ReplayMemory as RainbowMemory
 from .base import BaseAgent
 
 class RainbowAgent(BaseAgent):
-  def __init__(self, env, args, custom_encoder=None, repr_learner=None):
+  def __init__(self, env, args, custom_encoder=None, repr_learner=None, tracked=False):
     self.args = args
     self.env = env
     self.repr_learner = repr_learner
@@ -37,6 +38,10 @@ class RainbowAgent(BaseAgent):
     self.dqn = Agent(self.args, self.obs_dim,
       self.env.action_space.n, custom_encoder)
 
+    if tracked:
+      wandb.watch(self.dqn.online_net)
+      wandb.watch(self.dqn.target_net)
+
   def start_task(self, n_steps):
     # Reset metrics and seeds
     self.metrics = {'steps': [], 'rewards': [], 'Qs': [],
@@ -56,19 +61,20 @@ class RainbowAgent(BaseAgent):
     self.step_idx = 1
 
   def train_representation(self):
-    # TODO: This needs to be made into an unweighted sampling
-    _, obs, acts, returns, next_obs, _, nonterminals = self.mem.sample(self.repr_learner.batch_size)
-    acts = F.one_hot(acts, self.env.action_space.n)
-    dones = 1 - nonterminals
-    self.repr_learner.train([obs, acts, returns, next_obs, dones])
+    raise NotImplementedError('Representation learning not implemented with Rainbow!')
+    # # TODO: This needs to be made into an unweighted sampling
+    # _, obs, acts, returns, next_obs, _, nonterminals = self.mem.sample(self.repr_learner.batch_size)
+    # acts = F.one_hot(acts, self.env.action_space.n)
+    # dones = 1 - nonterminals
+    # self.repr_learner.train([obs, acts, returns, next_obs, dones])
 
   def sample_act(self, obs):
     if self.step_idx % self.args.replay_frequency == 0:
-      self.dqn.reset_noise()  # Draw a new set of noisy weights
+      self.dqn.reset_noise() # Draw a new set of noisy weights
 
     if obs.device != self.args.device:
       obs = obs.to(self.args.device)
-    action = self.dqn.act(obs)  # Choose an action greedily (with noisy weights)
+    action = self.dqn.act(obs) # Choose an action greedily (with noisy weights)
     return action
 
   def process_step_data(self, transition_data):
@@ -94,8 +100,10 @@ class RainbowAgent(BaseAgent):
 
       # Train with n-step distributional double-Q learning
       if self.step_idx % self.args.replay_frequency == 0:
-        self.dqn.learn(self.mem)
+        loss = self.dqn.learn(self.mem)
+        wandb.log({'task_agent_loss': loss})
 
+      # TODO: Move this logging to the simulation
       if self.step_idx % self.args.evaluation_interval == 0:
         print('Step: {}\t# Episodes: {}\tAvg ep reward: {:.2f}'.format(
             self.step_idx,

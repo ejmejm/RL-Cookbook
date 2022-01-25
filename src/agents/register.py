@@ -3,6 +3,7 @@ from types import SimpleNamespace
 
 import gym
 from torch import nn
+import wandb
 
 from .base import BaseRepresentationLearner
 from .representation import NextStatePredictor, SFPredictor
@@ -15,12 +16,13 @@ from ..models import SFNetwork, PolicyNetwork, CriticNetwork, StatePredictionMod
 REPR_LEARNERS = {
     'NextStatePredictor': lambda env, args:
         NextStatePredictor(
-            StatePredictionModel(list(env.observation_space.shape), env.action_space.n) \
+            tracked(StatePredictionModel(list(env.observation_space.shape), env.action_space.n)) \
                 .to(args['device']),
+            env.action_space.n,
             **args['repr_agent_args']),
     'SFPredictor': lambda env, args:
         SFPredictor(
-            SFNetwork(list(env.observation_space.shape),
+            tracked(SFNetwork(list(env.observation_space.shape)),
                 **args['repr_model_args']).to(args['device']),
             **args['repr_agent_args']),
     'None': lambda env, args: None
@@ -32,17 +34,17 @@ EXPLORATION_AGENTS = {
     'Surprisal': lambda env, args, repr_learner:
         SurprisalExplorerAgent(
             env,
-            PolicyNetwork(list(env.observation_space.shape), env.action_space.n) \
+            tracked(PolicyNetwork(list(env.observation_space.shape), env.action_space.n)) \
                 .to(args['device']),
-            CriticNetwork(list(env.observation_space.shape)).to(args['device']),
+            tracked(CriticNetwork(list(env.observation_space.shape)).to(args['device'])),
             repr_learner,
             **args['exp_agent_args']),
     'MaxEntropy': lambda env, args, repr_learner:
         MaxEntropyExplorerAgent(
             env,
-            PolicyNetwork(list(env.observation_space.shape), env.action_space.n) \
+            tracked(PolicyNetwork(list(env.observation_space.shape), env.action_space.n)) \
                 .to(args['device']),
-            CriticNetwork(list(env.observation_space.shape)).to(args['device']),
+            tracked(CriticNetwork(list(env.observation_space.shape)).to(args['device'])),
             repr_learner,
             device = args['device'],
             **args['exp_agent_args'])
@@ -54,7 +56,7 @@ TASK_AGENTS = {
             env,
             dict_to_args(combine_args(DEFAULT_RAINBOW_ARGS.__dict__,
                 args['task_model_args'], {'device': args['device']})),
-            encoder, repr_learner)
+            encoder, repr_learner, tracked=True)
 }
 
 def combine_args(*args):
@@ -68,6 +70,10 @@ def dict_to_args(d):
     for k, v in d.items():
         setattr(args, k, v)
     return args
+
+def tracked(model):
+    wandb.watch(model)
+    return model
     
 def create_repr_learner(repr_learner_name: str, env: gym.Env, args: dict):
     return REPR_LEARNERS[repr_learner_name](env, args)

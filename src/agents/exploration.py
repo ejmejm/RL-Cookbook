@@ -6,6 +6,7 @@ from einops import rearrange
 import numpy as np
 import torch
 from torch.nn import functional as F
+import wandb
 
 
 class ReprLearningMixin():
@@ -21,12 +22,11 @@ class ReprLearningMixin():
 
   def train_representation(self):
     replace = (self.repr_step_idx - 1) < self.buffer_size()
-    obs, acts, rewards, next_obs, dones = \
-      self.sample_buffer(self.repr_learner.batch_size, replace)
-    acts = F.one_hot(acts.long(), self.n_acts)
-    loss = self.repr_learner.train([obs, acts, rewards, next_obs, dones])
+    batch_data = self.sample_buffer(self.repr_learner.batch_size, replace)
+    loss = self.repr_learner.train(batch_data)
     self.repr_losses.append(loss)
 
+    wandb.log({'repr_loss': loss})
     if len(self.repr_losses) >= self.repr_learner.log_freq:
       print('Step: {} | Repr loss: {:.4f}'.format(self.repr_step_idx, np.mean(self.repr_losses)))
       self.repr_losses = []
@@ -88,7 +88,9 @@ class SurprisalExplorerAgent(PPOAgent, ReprLearningMixin):
   def calculate_ppo_rewards(self, batch_data):
     with torch.no_grad():
       repr_losses = self.repr_learner.calculate_losses(batch_data)
+    wandb.log({'explorer_reward': repr_losses.mean().item()})
     return repr_losses
+
 
 class MaxEntropyExplorerAgent(PPOAgent, ReprLearningMixin):
   def __init__(self, env, policy, critic, repr_learner, knn_k=5,
@@ -115,13 +117,16 @@ class MaxEntropyExplorerAgent(PPOAgent, ReprLearningMixin):
 
     # Source: https://github.com/rll-research/url_benchmark/blob/bb98f0c6d78b3c467fb5a9fa5bbba3b7c0250397/utils.py#L289
     # (b1, 1, c) - (1, b2, c) -> (b1, 1, c) - (1, b2, c) -> (b1, b2, c) -> (b1, b2)
+    # TODO: Make sure states aren't getting compared to themselves and duplicate pairs
     sim_matrix = torch.norm(
       rearrange(latent_states, 'b d -> b 1 d') -
       rearrange(latent_states, 'b d -> 1 b d'),
       dim=-1, p=2)
     neighbor_diffs, _ = sim_matrix.topk(
       self.knn_k, dim=-1, largest=False, sorted=False) # (b, k)
+    # TODO: Log closest neighbor distance
     rewards = torch.log(1 + neighbor_diffs.mean(dim=-1))
     rewards = rewards.cpu()
+    wandb.log({'explorer_reward': rewards.mean().item()})
 
     return rewards

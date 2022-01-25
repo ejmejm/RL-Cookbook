@@ -1,24 +1,24 @@
 import copy
-
-import numpy as np
 import torch
 from torch import nn
 from torch import optim
 from torch.nn import functional as F
 
-from ..base import BaseAgent, BaseRepresentationLearner
-from ...envs import TransitionData
+from .base import BaseRepresentationLearner
+from ..envs import TransitionData
 
 
 class NextStatePredictor(BaseRepresentationLearner):
   def __init__(
       self,
       model: nn.Module,
+      n_acts: int,
       batch_size: int = 256,
       update_freq: int = 128,
       lr: float = 1e-3):
     super().__init__(model, batch_size, update_freq)
     self.encoder = self.model.encoder
+    self.n_acts = n_acts
     self.optimizer = optim.Adam(self.model.parameters(), lr=lr)
     
   def _init_model(self):
@@ -29,8 +29,8 @@ class NextStatePredictor(BaseRepresentationLearner):
     
     obs, acts, _, next_obs, _ = \
       [torch.tensor(e, dtype=torch.float32).to(device) for e in batch_data]
-
-    next_obs_pred = self.model(obs, acts)
+    oh_acts = F.one_hot(acts.long(), self.n_acts).float()
+    next_obs_pred = self.model(obs, oh_acts)
     losses = (next_obs - next_obs_pred) ** 2
     while len(losses.shape) > 2:
       losses = losses.mean(dim=-1)
@@ -44,6 +44,8 @@ class NextStatePredictor(BaseRepresentationLearner):
     self.optimizer.zero_grad()
     loss.backward()
     self.optimizer.step()
+
+    return loss.item()
 
     
 class SFPredictor(BaseRepresentationLearner):

@@ -12,6 +12,8 @@ Each objective will have two variants: one where the prediction error is minimiz
 - Next state
 - Successor features
 - (Optional) Future state
+- (Optional) Inverse dynamics (predicting action)
+- (Optional) SR-NN agumentation (sparse representations)
 
 **Exploration Method**
 
@@ -21,8 +23,10 @@ Given that the learning of representations is heavily dependent on their explora
 - Entropy based exploration
 
 **Environments**
+
 - Gridworld
 - Atari
+- Gym hard exploration envs
 - (Optional) DM Control Suite
 
 **Testing Methodology**

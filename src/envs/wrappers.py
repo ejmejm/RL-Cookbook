@@ -60,8 +60,31 @@ class SimpleMapWrapper(gym.Wrapper):
       self._reset_start_map()
     return super().reset()
 
+class Scale1DObsWrapper(gym.ObservationWrapper):
+  def __init__(self, env):
+    super().__init__(env)
+
+    obs_shape = env.observation_space.shape
+    self.observation_space = gym.spaces.Box(
+        low=np.zeros(obs_shape), high=np.ones(obs_shape),
+        shape=env.observation_space.shape, dtype=np.float32)
+
+  # Scales observations to [0, 1]
+  def observation(self, observation):
+    observation = observation.astype(np.float32)
+    obs_space = self.observation_space
+    obs_range = obs_space.high - obs_space.low
+    observation = (observation - obs_space.low) / obs_range
+    return observation
+
 ATARI_WRAPPERS = [
   lambda env: AtariPreprocessing(env, scale_obs=True),
+  lambda env: FrameStack(env, N_FRAME_STACK),
+  lambda env: TransformObservation(env, torch.FloatTensor)
+]
+
+GYM_1D_WRAPPERS = [
+  lambda env: Scale1DObsWrapper(env, N_FRAME_STACK),
   lambda env: FrameStack(env, N_FRAME_STACK),
   lambda env: TransformObservation(env, torch.FloatTensor)
 ]

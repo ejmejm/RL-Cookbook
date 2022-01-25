@@ -5,6 +5,7 @@ import numpy as np
 import torch
 from torch import optim
 from torch.nn import functional as F
+import wandb
 
 
 class PPOAgent(BaseAgent, ExperienceBufferMixin):
@@ -29,7 +30,6 @@ class PPOAgent(BaseAgent, ExperienceBufferMixin):
     self.ppo_clip = ppo_clip
     self.policy_losses = []
     self.critic_losses = []
-    self.extrinsic_rewards = []
     self.intrinsic_rewards = []
     self.step_idx = 1
 
@@ -150,6 +150,8 @@ class PPOAgent(BaseAgent, ExperienceBufferMixin):
 
     self.policy_losses.append(np.mean(policy_losses))
     self.critic_losses.append(np.mean(critic_losses))
+    wandb.log({'ppo_policy_loss': self.policy_losses[-1],
+               'ppo_critic_loss': self.critic_losses[-1]})
 
     return np.mean(policy_losses) + np.mean(critic_losses)
 

@@ -42,7 +42,6 @@ def create_upconvs_from_obs_dim(obs_dim):
       return create_gridworld_upconvs(obs_dim[0])
   return create_atari_upconvs(obs_dim[0])
 
-
 class PolicyNetwork(nn.Module):
     def __init__(self, obs_dim, n_acts):
         super().__init__()

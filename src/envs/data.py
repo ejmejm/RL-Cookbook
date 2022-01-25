@@ -1,6 +1,7 @@
 from collections import namedtuple
 from typing import Iterable
 
+import numpy as np
 import torch
 
 
@@ -24,3 +25,21 @@ class RewardNormalizer():
     def normalize(self, rewards):
         self._update(rewards)
         return self._normalize(rewards)
+
+# Tracks the entropy of a procedural discrete distribution
+class DiscreteEntropyTracker():
+    def __init__(self, dim, decay=0.97):
+        self.running_counts = [0 for _ in range(dim)]
+        self.decay = decay
+
+    def calc_entropy(self, sample_idx=None):
+        if sample_idx is not None:
+            for i in range(len(self.running_counts)):
+                if i == sample_idx:
+                    self.running_counts[i] = \
+                        self.decay * self.running_counts[i] + \
+                        (1 - self.decay)
+                else:
+                    self.running_counts[i] *= self.decay
+        probs = np.array(self.running_counts) / sum(self.running_counts)
+        return -sum([p * np.log(p + 1e-7) for p in probs])

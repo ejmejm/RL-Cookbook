@@ -1,5 +1,5 @@
 import gym
-from gym.wrappers import TimeLimit, FrameStack, TransformObservation
+from gym.wrappers import TimeLimit, TransformObservation
 import gym_gridworld
 import torch
 
@@ -42,6 +42,27 @@ def create_crazy_climber_env():
   return create_atari_env('CrazyClimberNoFrameskip-v4')
 
 
+### Gym Envs ###
+
+
+def create_gym_1d_env(env_name):
+  assert env_name in SUPPORTED_GYM_1D_ENVS, \
+    f'Unsupported gym 1d env: {env_name}'
+
+  global N_FRAME_STACK
+  N_FRAME_STACK = 4
+
+  env = gym.make(env_name)
+  for wrapper in ATARI_WRAPPERS:
+    env = wrapper(env)
+  return env
+
+SUPPORTED_GYM_1D_ENVS = set([
+  'MountainCar-v0',
+  'Acrobot-v1'
+])
+
+
 ### General ###
 
 
@@ -51,5 +72,7 @@ def make_env(env_name):
       return create_simple_gridworld_env(True)
     else:
       return create_simple_gridworld_env(False)
+  elif env_name in SUPPORTED_GYM_1D_ENVS:
+    return create_gym_1d_env(env_name)
   else:
     return create_atari_env(env_name)
