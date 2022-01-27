@@ -103,14 +103,6 @@ class RainbowAgent(BaseAgent):
         loss = self.dqn.learn(self.mem)
         wandb.log({'task_agent_loss': loss})
 
-      # TODO: Move this logging to the simulation
-      if self.step_idx % self.args.evaluation_interval == 0:
-        print('Step: {}\t# Episodes: {}\tAvg ep reward: {:.2f}'.format(
-            self.step_idx,
-            len(self.all_rewards) - self.last_update_episode,
-            np.mean(self.all_rewards[self.last_update_episode:])))
-        self.last_update_episode = len(self.all_rewards)
-
       # Update target network
       if self.step_idx % self.args.target_update == 0:
         self.dqn.update_target_net()

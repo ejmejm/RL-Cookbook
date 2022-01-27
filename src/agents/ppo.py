@@ -132,6 +132,7 @@ class PPOAgent(BaseAgent, ExperienceBufferMixin):
         value_loss = F.mse_loss(new_values, minibatch['returns'])
 
         # Calculate the policy loss
+        # print(new_act_probs, minibatch['old_act_probs'])
         policy_ratio = new_act_probs / (minibatch['old_act_probs'] + 1e-7)
         clipped_policy_ratio = torch.clamp(policy_ratio, 1 - self.ppo_clip, 1 + self.ppo_clip)
         policy_loss = torch.min(policy_ratio * minibatch['advantages'],

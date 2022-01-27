@@ -20,7 +20,7 @@ class RewardNormalizer():
     def _normalize(self, rewards):
         hist = torch.tensor(self.hist, dtype=torch.float32,
             device=rewards.device)
-        return (rewards - torch.mean(hist)) / torch.std(hist)
+        return (rewards - torch.mean(hist)) / (torch.std(hist) + 1e-7)
 
     def normalize(self, rewards):
         self._update(rewards)

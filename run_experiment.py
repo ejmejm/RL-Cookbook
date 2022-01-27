@@ -47,7 +47,7 @@ if __name__ == '__main__':
 
         # Run training
         print('Starting task training...')
-        train_task_model(task_agent, env, args.task_steps, print_rewards=False)
+        train_task_model(task_agent, env, args.task_steps, print_rewards=True)
         print('Task training complete!')
         
         wandb.finish()
