@@ -4,7 +4,7 @@ import gym_gridworld
 import torch
 
 from .wrappers import GridWorldWrapper, SimpleMapWrapper
-from .wrappers import ATARI_WRAPPERS, N_FRAME_STACK
+from .wrappers import ATARI_WRAPPERS, GYM_1D_WRAPPERS, N_FRAME_STACK
 
 
 def create_gridworld_env(max_steps=500):
@@ -53,7 +53,7 @@ def create_gym_1d_env(env_name):
   N_FRAME_STACK = 4
 
   env = gym.make(env_name)
-  for wrapper in ATARI_WRAPPERS:
+  for wrapper in GYM_1D_WRAPPERS:
     env = wrapper(env)
   return env
 

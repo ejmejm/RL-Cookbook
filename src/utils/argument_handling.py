@@ -8,8 +8,9 @@ def make_arg_parser():
     parser.add_argument('--repr_learner', type=str, default='SFPredictor')
     parser.add_argument('--task_agent', type=str, default='Rainbow')
     parser.add_argument('--device', type=str, default='cuda')
-    parser.add_argument('--explore_steps', type=int, default=int(1e5))
+    parser.add_argument('--exp_steps', type=int, default=int(1e5))
     parser.add_argument('--task_steps', type=int, default=int(1e5))
+    parser.add_argument('--n_runs', type=int, default=1)
 
     parser.add_argument('--exp_agent_args', type=str, metavar='KEY=VALUE', nargs='+', default={})
     parser.add_argument('--exp_model_args', type=str, metavar='KEY=VALUE', nargs='+', default={})
@@ -24,6 +25,7 @@ def make_arg_parser():
 
 # Source: https://gist.github.com/fralau/061a4f6c13251367ef1d9a9a99fb3e8d
 def parse_var(s):
+    print(s)
     items = s.split('=')
     key = items[0].strip()
     value = '='.join(items[1:])
@@ -43,5 +45,5 @@ DICT_ARGS_LIST = ['exp_agent_args', 'exp_model_args', 'repr_agent_args',
 def format_args(args):
     for arg_name in DICT_ARGS_LIST:
         if len(getattr(args, arg_name)) > 0:
-            args[arg_name] = parse_vars(args[arg_name])
+            setattr(args, arg_name, parse_vars(getattr(args, arg_name)))
     return args

@@ -4,6 +4,7 @@ import wandb
 from ..agents import BaseAgent
 from ..envs.data import DiscreteEntropyTracker
 
+
 def train_exploration_model(agent: BaseAgent, env, n_steps):
   act_entropy_tracker = DiscreteEntropyTracker(env.action_space.n)
   agent.start_task(n_steps)

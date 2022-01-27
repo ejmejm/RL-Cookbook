@@ -84,7 +84,7 @@ ATARI_WRAPPERS = [
 ]
 
 GYM_1D_WRAPPERS = [
-  lambda env: Scale1DObsWrapper(env, N_FRAME_STACK),
+  lambda env: Scale1DObsWrapper(env),
   lambda env: FrameStack(env, N_FRAME_STACK),
   lambda env: TransformObservation(env, torch.FloatTensor)
 ]
