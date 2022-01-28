@@ -1,0 +1,12 @@
+program: sweep_agent.py
+method: grid
+metric:
+  name: env_task_episode_reward
+  goal: maximize
+parameters:
+  exp_steps:
+    value: 1000
+  task_steps:
+    value: 3000
+  env:
+    values: ['Gridworld', 'CrazyClimberNoFrameskip-v4']

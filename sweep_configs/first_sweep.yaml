@@ -1,0 +1,25 @@
+program: sweep_agent.py
+command:
+  - ${env}
+  - ${interpreter}
+  - ${program}
+method: grid
+metric:
+  name: env_task_episode_reward
+  goal: maximize
+parameters:
+  exp_steps:
+    value: 200_000
+  task_steps:
+    value: 200_000
+  env:
+    values: ['Gridworld', 'CrazyClimberNoFrameskip-v4']
+
+  repr_learner:
+    values: ['NextStatePredictor', 'SFPredictor', 'None']
+  exp_agent:
+    values: ['EzExplore', 'Surprisal', 'MaxEntropy']
+  task_agent:
+    values: ['PPO', 'Rainbow']
+  freeze_encoder:
+    values: [True, False]
