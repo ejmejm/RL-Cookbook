@@ -5,6 +5,7 @@ import torch
 from torch import nn
 from torch.nn import functional as F
 
+from ....models.base import create_encoder_from_obs_dim
 
 # Factorised NoisyLinear layer with bias
 class NoisyLinear(nn.Module):
@@ -63,7 +64,7 @@ class DQN(nn.Module):
       self.convs = nn.Sequential(nn.Conv2d(args.history_length, 32, 5, stride=5, padding=0), nn.ReLU(),
                                  nn.Conv2d(32, 64, 5, stride=5, padding=0), nn.ReLU())
     else:
-      raise ValueError('Unknown architecture: {}'.format(args.architecture))
+      self.convs = create_encoder_from_obs_dim(input_dim)
 
     test_input = torch.zeros([1] + list(input_dim), dtype=torch.float32)
     with torch.no_grad():

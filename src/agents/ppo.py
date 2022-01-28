@@ -4,6 +4,7 @@ from ..envs.data import RewardNormalizer
 import numpy as np
 import torch
 from torch import optim
+from torch.distributions import Categorical
 from torch.nn import functional as F
 import wandb
 
@@ -11,7 +12,8 @@ import wandb
 class PPOAgent(BaseAgent, ExperienceBufferMixin):
   def __init__(self, env, policy, critic, calculate_rewards=None, batch_size=32,
                update_freq=128, log_freq=100, epsilon=0.05, lr=3e-4,
-               gamma=0.99, ppo_iters=20, ppo_clip=0.2, normalize_rewards=True):
+               gamma=0.99, ppo_iters=20, ppo_clip=0.2, value_coef=0.5,
+               entropy_coef=0.003, normalize_rewards=True):
     super().__init__()
 
     assert batch_size <= update_freq, 'Batch size must be <= update freq!'
@@ -28,6 +30,8 @@ class PPOAgent(BaseAgent, ExperienceBufferMixin):
     self.gamma = gamma
     self.ppo_iters = ppo_iters
     self.ppo_clip = ppo_clip
+    self.value_coef = value_coef
+    self.entropy_coef = entropy_coef
     self.policy_losses = []
     self.critic_losses = []
     self.intrinsic_rewards = []
@@ -124,6 +128,7 @@ class PPOAgent(BaseAgent, ExperienceBufferMixin):
         # Calculate new action probabilities and values for the epoch
         new_values = self.critic(minibatch['obs'])
         new_act_probs = F.softmax(self.policy(minibatch['obs']), dim=-1)
+        policy_entropy = Categorical(probs=new_act_probs).entropy()
         new_act_probs = new_act_probs.gather(1, minibatch['act'].unsqueeze(1))
         new_act_probs = new_act_probs.squeeze(1)
         new_values = new_values.squeeze(1)
@@ -138,10 +143,12 @@ class PPOAgent(BaseAgent, ExperienceBufferMixin):
         policy_loss = torch.min(policy_ratio * minibatch['advantages'],
           clipped_policy_ratio * minibatch['advantages'])
         policy_loss = -policy_loss.mean()
+        entropy_loss = -policy_entropy.mean()
 
-        total_loss = policy_loss + value_loss
+        total_loss = policy_loss + self.value_coef * value_loss \
+          + self.entropy_coef * entropy_loss
 
-        policy_losses.append(total_loss.item())
+        policy_losses.append(policy_loss.item())
         critic_losses.append(value_loss.item())
 
         # Update the model

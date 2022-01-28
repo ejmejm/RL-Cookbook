@@ -26,7 +26,7 @@ REPR_LEARNERS = {
             tracked(SFNetwork(list(env.observation_space.shape)),
                 **args['repr_model_args']).to(args['device']),
             **args['repr_agent_args']),
-    'none': lambda env, args: None
+    'none': lambda _, __: None
 }
 
 EXPLORATION_AGENTS = {

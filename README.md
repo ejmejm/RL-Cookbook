@@ -13,7 +13,6 @@ Each objective will have two variants: one where the prediction error is minimiz
 - Successor features
 - (Optional) Future state
 - (Optional) Inverse dynamics (predicting action)
-- (Optional) SR-NN agumentation (sparse representations)
 
 **Exploration Method**
 
@@ -43,6 +42,10 @@ There is no standardized method for testing the usefulness of learned representa
 - Transfer method
     - Reuse learned encoder
     - Randomized with no transfer (baseline)
+
+**Misc Implementation**
+
+- (Optional) SR-NN agumentation (sparse representations)
 
 **Metrics**
 
