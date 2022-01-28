@@ -1,0 +1,14 @@
+numpy==1.21.2
+cmake==3.22.1
+AutoROM==0.4.2
+AutoROM.accept-rom-license==0.4.2
+gym==0.21.0
+-e git+https://github.com/xinleipan/gym-gridworld.git@c311bf27fe89c343f5f9a4a2bb6391c14ac98800#egg=gym_gridworld
+ale-py==0.7.3
+atari-py==0.2.9
+torch==1.9.1 # +cu102
+wandb==0.12.9
+Pillow==8.3.2
+opencv-python==4.5.4.58
+einops==0.3.2
+matplotlib==3.4.3
