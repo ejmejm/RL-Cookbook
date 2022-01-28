@@ -5,12 +5,12 @@ import gym
 from torch import nn
 import wandb
 
-from .base import BaseRepresentationLearner
-from .representation import NextStatePredictor, SFPredictor
-from .exploration import EzExplorerAgent, MaxEntropyExplorerAgent, SurprisalExplorerAgent
-from .rainbow import RainbowAgent
-from .ppo import PPOAgent
-from .Rainbow import DEFAULT_RAINBOW_ARGS
+from ..agents.base import BaseRepresentationLearner
+from ..agents.representation import NextStatePredictor, SFPredictor
+from ..agents.exploration import EzExplorerAgent, MaxEntropyExplorerAgent, SurprisalExplorerAgent
+from ..agents.rainbow import RainbowAgent
+from ..agents.ppo import PPOAgent
+from ..agents.Rainbow import DEFAULT_RAINBOW_ARGS
 from ..models import SFNetwork, PolicyNetwork, CriticNetwork, StatePredictionModel
 
 
@@ -58,12 +58,13 @@ TASK_AGENTS = {
             dict_to_args(combine_args(DEFAULT_RAINBOW_ARGS.__dict__,
                 args['task_model_args'], {'device': args['device']})),
             encoder, repr_learner, tracked=True),
-    'ppo': lambda env, args, encoder, repr_learner:
+    'ppo': lambda env, args, encoder, _:
         PPOAgent(
             env,
-            tracked(PolicyNetwork(list(env.observation_space.shape), env.action_space.n)) \
-                .to(args['device']),
-            tracked(CriticNetwork(list(env.observation_space.shape)).to(args['device'])),
+            tracked(PolicyNetwork(list(env.observation_space.shape), env.action_space.n,
+                encoder=encoder)).to(args['device']),
+            tracked(CriticNetwork(list(env.observation_space.shape),
+                encoder=copy.deepcopy(encoder)).to(args['device'])),
             **args['task_model_args'])
 }
 

@@ -10,7 +10,7 @@ def make_arg_parser():
     parser.add_argument('--device', type=str, default='cuda')
     parser.add_argument('--exp_steps', type=int, default=int(1e5))
     parser.add_argument('--task_steps', type=int, default=int(1e5))
-    parser.add_argument('--n_runs', type=int, default=1)
+    parser.add_argument('--n_runs', type=int, default=1) # Does not work for sweeps
 
     parser.add_argument('--exp_agent_args', type=str, metavar='KEY=VALUE', nargs='+', default={})
     parser.add_argument('--exp_model_args', type=str, metavar='KEY=VALUE', nargs='+', default={})
@@ -46,4 +46,10 @@ def format_args(args):
     for arg_name in DICT_ARGS_LIST:
         if len(getattr(args, arg_name)) > 0:
             setattr(args, arg_name, parse_vars(getattr(args, arg_name)))
+    return args
+
+def make_and_parse_args():
+    parser = make_arg_parser()
+    args = parser.parse_args()
+    args = format_args(args)
     return args

@@ -91,17 +91,18 @@ def create_decoder_from_obs_dim(obs_dim):
     return create_atari_decoder(obs_dim[0])
 
 class PolicyNetwork(nn.Module):
-    def __init__(self, obs_dim, n_acts):
+    def __init__(self, obs_dim, n_acts, encoder=None):
         super().__init__()
-        convs = create_encoder_from_obs_dim(obs_dim)
+        if encoder is None:
+            encoder = create_encoder_from_obs_dim(obs_dim)
 
         test_input = torch.zeros(1, *obs_dim)
         with torch.no_grad():
-            self.encoder_output_size = convs(test_input).view(-1).shape[0]
+            self.encoder_output_size = encoder(test_input).view(-1).shape[0]
 
         hidden_size = get_hidden_size_from_obs_dim(obs_dim)
         self.layers = nn.Sequential(
-            convs,
+            encoder,
             nn.Flatten(),
             nn.Linear(self.encoder_output_size, hidden_size),
             nn.ReLU(),
@@ -111,17 +112,18 @@ class PolicyNetwork(nn.Module):
         return self.layers(x)
 
 class CriticNetwork(nn.Module):
-    def __init__(self, obs_dim):
+    def __init__(self, obs_dim, encoder=None):
         super().__init__()
-        convs = create_encoder_from_obs_dim(obs_dim)
+        if encoder is None:
+            encoder = create_encoder_from_obs_dim(obs_dim)
 
         test_input = torch.zeros(1, *obs_dim)
         with torch.no_grad():
-            self.encoder_output_size = convs(test_input).view(-1).shape[0]
+            self.encoder_output_size = encoder(test_input).view(-1).shape[0]
 
         hidden_size = get_hidden_size_from_obs_dim(obs_dim)
         self.layers = nn.Sequential(
-            convs,
+            encoder,
             nn.Flatten(),
             nn.Linear(self.encoder_output_size, hidden_size),
             nn.ReLU(),
@@ -131,16 +133,17 @@ class CriticNetwork(nn.Module):
         return self.layers(x)
 
 class SFNetwork(nn.Module):
-    def __init__(self, obs_dim, embed_dim=256):
+    def __init__(self, obs_dim, embed_dim=256, encoder=None):
         super().__init__()
-        convs = create_encoder_from_obs_dim(obs_dim)
+        if encoder is None:
+            encoder = create_encoder_from_obs_dim(obs_dim)
 
         test_input = torch.zeros(1, *obs_dim)
         with torch.no_grad():
-            self.encoder_output_size = convs(test_input).view(-1).shape[0]
+            self.encoder_output_size = encoder(test_input).view(-1).shape[0]
         
         self.encoder = nn.Sequential(
-            convs,
+            encoder,
             nn.Flatten(),
             nn.Linear(self.encoder_output_size, embed_dim),
             nn.LayerNorm(embed_dim))
