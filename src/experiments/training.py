@@ -24,6 +24,10 @@ def train_loop(args):
         print('Exploration complete!')
 
         encoder = copy.deepcopy(repr_learner.encoder).to('cpu')
+
+        if args.freeze_encoder:
+            for param in encoder.parameters():
+                param.requires_grad = False
     else:
         encoder = None
 

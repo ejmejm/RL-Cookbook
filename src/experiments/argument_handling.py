@@ -10,6 +10,7 @@ def make_arg_parser():
     parser.add_argument('--device', type=str, default='cuda')
     parser.add_argument('--exp_steps', type=int, default=int(1e5))
     parser.add_argument('--task_steps', type=int, default=int(1e5))
+    parser.add_argument('--freeze_encoder', default=False, action='store_true')
     parser.add_argument('--n_runs', type=int, default=1) # Does not work for sweeps
 
     parser.add_argument('--exp_agent_args', type=str, metavar='KEY=VALUE', nargs='+', default={})
