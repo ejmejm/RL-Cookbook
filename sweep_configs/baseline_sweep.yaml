@@ -7,7 +7,7 @@ parameters:
   task_steps:
     value: 200_000
   env:
-    values: ['Gridworld', 'CrazyClimberNoFrameskip-v4']
+    values: ['Gridworld', 'Gridworld-Random', 'MountainCar-v0', 'Acrobot-v1', 'MontezumaRevengeNoFrameskip-v4', 'CrazyClimberNoFrameskip-v4']
     
   exp_agent:
     value: 'None'

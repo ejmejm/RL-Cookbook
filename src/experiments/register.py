@@ -62,7 +62,7 @@ TASK_AGENTS = {
         PPOAgent(
             env,
             tracked(PolicyNetwork(list(env.observation_space.shape), env.action_space.n,
-                encoder=encoder)).to(args['device']),
+                encoder=copy.deepcopy(encoder))).to(args['device']),
             tracked(CriticNetwork(list(env.observation_space.shape),
                 encoder=copy.deepcopy(encoder)).to(args['device'])),
             **args['task_model_args'])
