@@ -18,7 +18,8 @@ class GridWorldWrapper(gym.ObservationWrapper):
         low=0, high=1, shape=obs_shape, dtype=np.float32)
 
   def observation(self, observation):
-    observation = cv2.cvtColor(observation, cv2.COLOR_RGB2GRAY)
+    # Convert to grayscale
+    observation = np.sum(observation * np.array([[[0.2989, 0.5870, 0.1140]]]), axis=2)
     observation = cv2.resize(observation, self.observation_space.shape[1:],
                              interpolation=cv2.INTER_AREA)
     observation = np.expand_dims(observation, 0)
