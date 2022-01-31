@@ -37,7 +37,7 @@ class NextStatePredictor(BaseRepresentationLearner):
     
     return losses
 
-  def train(self, batch_data: list[TransitionData]):
+  def train(self, batch_data):
     losses = self.calculate_losses(batch_data)
     loss = losses.mean()
 

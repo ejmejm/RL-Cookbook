@@ -4,6 +4,8 @@ metric:
   name: env_task_episode_reward
   goal: maximize
 parameters:
+  device:
+    value: 'cpu'
   n_runs:
     values: [1, 2, 3]
   task_steps:

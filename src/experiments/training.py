@@ -20,7 +20,7 @@ def train_loop(args):
         
         # Run exploration
         print('Starting exploration...')
-        train_exploration_model(explore_agent, env, args.exp_steps)
+        train_exploration_model(explore_agent, env, args.exp_steps, print_freq=args.reward_print_freq)
         print('Exploration complete!')
 
         encoder = copy.deepcopy(repr_learner.encoder).to('cpu')
@@ -36,5 +36,5 @@ def train_loop(args):
 
     # Run training
     print('Starting task training...')
-    train_task_model(task_agent, env, args.task_steps)
+    train_task_model(task_agent, env, args.task_steps, print_freq=args.reward_print_freq)
     print('Task training complete!')

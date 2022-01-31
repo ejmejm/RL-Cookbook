@@ -12,6 +12,8 @@ parameters:
     value: 200_000
   task_steps:
     value: 200_000
+  device:
+    value: 'cpu'
   env:
     values: ['Gridworld', 'CrazyClimberNoFrameskip-v4']
 
