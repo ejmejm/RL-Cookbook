@@ -65,6 +65,9 @@ class ExperienceBufferMixin():
   def _fix_size(self):
     self.exp_buffer = self.exp_buffer[-self.max_size:]
 
+  def clear_buffer(self):
+    self.exp_buffer = []
+
   def append_buffer(self, data):
     self.exp_buffer.append(data)
     self._fix_size()

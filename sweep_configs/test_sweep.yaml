@@ -5,8 +5,12 @@ metric:
   goal: maximize
 parameters:
   exp_steps:
-    value: 1000
+    value: 2000
   task_steps:
-    value: 3000
+    value: 5000
   env:
-    values: ['Gridworld', 'CrazyClimberNoFrameskip-v4']
+    values: ['Gridworld', 'Acrobot-v1', 'CrazyClimberNoFrameskip-v4']
+  task_agent:
+    values: ['PPO', 'Rainbow']
+  device:
+    value: 'cpu'

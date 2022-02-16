@@ -34,7 +34,6 @@ class PPOAgent(BaseAgent, ExperienceBufferMixin):
     self.entropy_coef = entropy_coef
     self.policy_losses = []
     self.critic_losses = []
-    self.intrinsic_rewards = []
     self.step_idx = 1
 
     if normalize_rewards:
@@ -62,6 +61,7 @@ class PPOAgent(BaseAgent, ExperienceBufferMixin):
 
   def prepare_recent_batch_data(self):
     batch_data = self.get_buffer_recent_data(self.update_freq)
+    self.clear_buffer()
     batch_data = [torch.tensor(e, dtype=torch.float32) \
        for e in batch_data]
     batch_data[1] = batch_data[1].long()

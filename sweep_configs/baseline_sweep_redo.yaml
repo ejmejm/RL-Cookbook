@@ -1,0 +1,19 @@
+program: sweep_agent.py
+method: grid
+metric:
+  name: env_task_episode_reward
+  goal: maximize
+parameters:
+  device:
+    value: 'cpu'
+  n_runs:
+    values: [1, 2, 3]
+  task_steps:
+    value: 200_000
+  env:
+    values: ['MontezumaRevengeNoFrameskip-v4', 'CrazyClimberNoFrameskip-v4']
+    
+  exp_agent:
+    value: 'None'
+  task_agent:
+    value: 'PPO'
