@@ -132,6 +132,50 @@ class CriticNetwork(nn.Module):
     def forward(self, x):
         return self.layers(x)
 
+class DDDQNNetwork(nn.Module):
+    def __init__(self, obs_dim, n_acts, encoder=None):
+        super().__init__()
+        if encoder is None:
+            encoder = create_encoder_from_obs_dim(obs_dim)
+        self.encoder = encoder
+
+        test_input = torch.zeros(1, *obs_dim)
+        with torch.no_grad():
+            self.encoder_output_size = encoder(test_input).view(-1).shape[0]
+
+        hidden_size = get_hidden_size_from_obs_dim(obs_dim)
+        self.value_layers = nn.Sequential(
+            nn.Flatten(),
+            nn.Linear(self.encoder_output_size, hidden_size),
+            nn.ReLU(),
+            nn.Linear(hidden_size, 1))
+
+        self.advantage_layers = nn.Sequential(
+            nn.Flatten(),
+            nn.Linear(self.encoder_output_size, hidden_size),
+            nn.ReLU(),
+            nn.Linear(hidden_size, n_acts))
+
+        self._init_weights()
+
+    def _init_weights(self):
+        self.value_layers[-1].weight.data.fill_(0)
+        self.value_layers[-1].bias.data.fill_(0)
+        self.advantage_layers[-1].weight.data.fill_(0)
+        self.advantage_layers[-1].bias.data.fill_(0)
+
+    def forward(self, x):
+        z = self.encoder(x)
+        values = self.value_layers(z)
+        advantages = self.advantage_layers(z)
+
+        advantage_means = advantages.mean(dim=1, keepdim=True)
+        advantages = advantages - advantage_means
+
+        qs = values + advantages
+
+        return qs
+
 class SFNetwork(nn.Module):
     def __init__(self, obs_dim, embed_dim=256, encoder=None):
         super().__init__()

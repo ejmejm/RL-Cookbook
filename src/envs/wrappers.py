@@ -23,7 +23,12 @@ class GridWorldWrapper(gym.ObservationWrapper):
     observation = cv2.resize(observation, self.observation_space.shape[1:],
                              interpolation=cv2.INTER_AREA)
     observation = np.expand_dims(observation, 0)
+    self.formatted_obs = observation
     return observation
+
+  def jump_to_state(self, state):
+      obs, reward, done, info = self.env.jump_to_state(state)
+      return self.observation(obs), reward, done, info
 
 class SimpleMapWrapper(gym.Wrapper):
   def __init__(self, env, randomized=False):

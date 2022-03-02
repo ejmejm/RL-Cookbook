@@ -45,7 +45,7 @@ class RainbowAgent(BaseAgent):
   def start_task(self, n_steps):
     # Reset metrics and seeds
     self.metrics = {'steps': [], 'rewards': [], 'Qs': [],
-               'best_avg_reward': -float('inf')}
+                    'best_avg_reward': -float('inf')}
     self.all_rewards = []
     self.ep_rewards = []
 
@@ -77,17 +77,25 @@ class RainbowAgent(BaseAgent):
     action = self.dqn.act(obs) # Choose an action greedily (with noisy weights)
     return action
 
-  def process_step_data(self, transition_data):
+  def append_buffer(self, transition_data):
     obs, action, reward, _, done = transition_data
-    self.ep_rewards.append(reward)
     # Clip rewards
     if self.args.reward_clip > 0:
       reward = max(min(reward, self.args.reward_clip), -self.args.reward_clip)
     self.mem.append(obs, action, reward, done) # Append transition to memory
 
+  def process_step_data(self, transition_data):
+    self.ep_rewards.append(transition_data[2])
+    self.append_buffer(transition_data)
+
   def end_episode(self):
     self.all_rewards.append(sum(self.ep_rewards))
     self.ep_rewards = []
+
+  def train(self):
+    loss = self.dqn.learn(self.mem)
+    wandb.log({'task_agent_loss': loss})
+    return loss
 
   def end_step(self):
     # Train and test
@@ -100,8 +108,7 @@ class RainbowAgent(BaseAgent):
 
       # Train with n-step distributional double-Q learning
       if self.step_idx % self.args.replay_frequency == 0:
-        loss = self.dqn.learn(self.mem)
-        wandb.log({'task_agent_loss': loss})
+        self.train()
 
       # Update target network
       if self.step_idx % self.args.target_update == 0:
@@ -113,3 +120,9 @@ class RainbowAgent(BaseAgent):
         self.train_representation()
 
     self.step_idx += 1
+
+  def train_mode(self):
+    self.dqn.train()
+
+  def eval_mode(self):
+    self.dqn.eval()

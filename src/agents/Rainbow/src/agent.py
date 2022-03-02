@@ -2,16 +2,16 @@
 from __future__ import division
 import copy
 import os
-import types
 import numpy as np
 import torch
 from torch import optim
 from torch.nn.utils import clip_grad_norm_
+from argparse import Namespace
 
 from .model import DQN
 
 # Setup default args for Rainbow
-args = types.SimpleNamespace()
+args = Namespace()
 args.id = 'default'
 args.seed = 42
 args.disable_cuda = False

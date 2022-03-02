@@ -18,8 +18,11 @@ class RewardNormalizer():
         self.hist = self.hist[-self.hist_capacity:]
 
     def _normalize(self, rewards):
-        hist = torch.tensor(self.hist, dtype=torch.float32,
-            device=rewards.device)
+        if not isinstance(rewards, torch.Tensor):
+            rewards = torch.tensor(rewards, dtype=torch.float32)
+        hist = torch.tensor(self.hist, dtype=torch.float32)
+        if len(hist) <= 1:
+            return torch.zeros_like(rewards)
         return (rewards - torch.mean(hist)) / (torch.std(hist) + 1e-7)
 
     def normalize(self, rewards):
