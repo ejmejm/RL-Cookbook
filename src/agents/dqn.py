@@ -157,7 +157,7 @@ class DDDQNAgent(BaseAgent, ExperienceBufferMixin):
         self._update_target_network()
 
     # Log loss stats
-    if len(self.losses) >= self.log_freq:
+    if self.log_freq > 0 and len(self.losses) >= self.log_freq:
       print('Step: {} | DDDQN loss: {:.4f}'.format(
           self.step_idx, np.mean(self.losses)))
       self.losses = []
