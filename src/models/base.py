@@ -91,7 +91,7 @@ def create_decoder_from_obs_dim(obs_dim):
     return create_atari_decoder(obs_dim[0])
 
 class PolicyNetwork(nn.Module):
-    def __init__(self, obs_dim, n_acts, encoder=None):
+    def __init__(self, obs_dim, n_acts, encoder=None, hidden_size=None):
         super().__init__()
         if encoder is None:
             encoder = create_encoder_from_obs_dim(obs_dim)
@@ -100,7 +100,8 @@ class PolicyNetwork(nn.Module):
         with torch.no_grad():
             self.encoder_output_size = encoder(test_input).view(-1).shape[0]
 
-        hidden_size = get_hidden_size_from_obs_dim(obs_dim)
+        if not hidden_size:
+            hidden_size = get_hidden_size_from_obs_dim(obs_dim)
         self.layers = nn.Sequential(
             encoder,
             nn.Flatten(),
@@ -112,7 +113,7 @@ class PolicyNetwork(nn.Module):
         return self.layers(x)
 
 class CriticNetwork(nn.Module):
-    def __init__(self, obs_dim, encoder=None):
+    def __init__(self, obs_dim, encoder=None, hidden_size=None):
         super().__init__()
         if encoder is None:
             encoder = create_encoder_from_obs_dim(obs_dim)
@@ -121,7 +122,8 @@ class CriticNetwork(nn.Module):
         with torch.no_grad():
             self.encoder_output_size = encoder(test_input).view(-1).shape[0]
 
-        hidden_size = get_hidden_size_from_obs_dim(obs_dim)
+        if not hidden_size:
+            hidden_size = get_hidden_size_from_obs_dim(obs_dim)
         self.layers = nn.Sequential(
             encoder,
             nn.Flatten(),
@@ -133,7 +135,7 @@ class CriticNetwork(nn.Module):
         return self.layers(x)
 
 class DDDQNNetwork(nn.Module):
-    def __init__(self, obs_dim, n_acts, encoder=None):
+    def __init__(self, obs_dim, n_acts, encoder=None, hidden_size=None):
         super().__init__()
         if encoder is None:
             encoder = create_encoder_from_obs_dim(obs_dim)
@@ -143,7 +145,8 @@ class DDDQNNetwork(nn.Module):
         with torch.no_grad():
             self.encoder_output_size = encoder(test_input).view(-1).shape[0]
 
-        hidden_size = get_hidden_size_from_obs_dim(obs_dim)
+        if not hidden_size:
+            hidden_size = get_hidden_size_from_obs_dim(obs_dim)
         self.value_layers = nn.Sequential(
             nn.Flatten(),
             nn.Linear(self.encoder_output_size, hidden_size),
@@ -177,7 +180,7 @@ class DDDQNNetwork(nn.Module):
         return qs
 
 class SFNetwork(nn.Module):
-    def __init__(self, obs_dim, embed_dim=256, encoder=None):
+    def __init__(self, obs_dim, embed_dim=256, encoder=None, hidden_size=None):
         super().__init__()
         if encoder is None:
             encoder = create_encoder_from_obs_dim(obs_dim)
@@ -192,7 +195,8 @@ class SFNetwork(nn.Module):
             nn.Linear(self.encoder_output_size, embed_dim),
             nn.LayerNorm(embed_dim))
 
-        hidden_size = get_hidden_size_from_obs_dim(obs_dim)
+        if not hidden_size:
+            hidden_size = get_hidden_size_from_obs_dim(obs_dim)
         self.sf_predictor = nn.Sequential(
             nn.Linear(embed_dim, hidden_size),
             nn.ReLU(),
@@ -206,14 +210,15 @@ class SFNetwork(nn.Module):
         return embeds, sfs
 
 class StatePredictionModel(nn.Module):
-  def __init__(self, obs_dim, n_acts):
+  def __init__(self, obs_dim, n_acts, hidden_size=None):
     super().__init__()
     self.downsample_convs = create_encoder_from_obs_dim(obs_dim)
 
     test_input = torch.zeros([1] + list(obs_dim))
     output_dim = self.downsample_convs(test_input).view(-1).shape[0]
 
-    hidden_size = get_hidden_size_from_obs_dim(obs_dim)
+    if not hidden_size:
+        hidden_size = get_hidden_size_from_obs_dim(obs_dim)
     self.fc = nn.Sequential(
         nn.Linear(output_dim + n_acts, hidden_size),
         nn.ReLU(),
