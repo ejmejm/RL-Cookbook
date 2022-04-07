@@ -108,7 +108,7 @@ class DDDQNAgent(BaseAgent, ExperienceBufferMixin):
     else:
         replace = False
     batch_data = self.sample_buffer(self.batch_size, replace=replace)
-    batch_data = [torch.tensor(e, dtype=torch.float32) \
+    batch_data = [torch.tensor(e, dtype=torch.float32, device=self.device) \
        for e in batch_data]
     batch_data[1] = batch_data[1].long()
     batch_data[4] = batch_data[4].int()
