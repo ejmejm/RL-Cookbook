@@ -169,7 +169,7 @@ class PPOAgent(BaseAgent, ExperienceBufferMixin):
       self.train()
 
     # Log policy stats
-    if len(self.policy_losses) >= self.log_freq:
+    if self.log_freq > 0 and len(self.policy_losses) >= self.log_freq:
       print('Step: {} | Policy loss: {:.4f} | Critic loss: {:.4f}'.format(
           self.step_idx, np.mean(self.policy_losses), np.mean(self.critic_losses)))
       self.policy_losses = []
