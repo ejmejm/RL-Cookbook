@@ -42,7 +42,7 @@ class ReprLearningMixin():
 
 
 class EzExplorerAgent(BaseAgent, ExperienceBufferMixin, ReprLearningMixin):
-  def __init__(self, env, min_repeat=1, max_repeat=6, repr_learner=None):
+  def __init__(self, env, min_repeat=1, max_repeat=6, repr_learner=None, track_experience=False):
     super().__init__()
     self.enable_repr_learning = repr_learner is not None
     if self.enable_repr_learning:
@@ -51,6 +51,7 @@ class EzExplorerAgent(BaseAgent, ExperienceBufferMixin, ReprLearningMixin):
     self.n_acts = env.action_space.n
     self.min_repeat = min_repeat
     self.max_repeat = max_repeat
+    self.track_experience = track_experience
 
     self.curr_act = None
     self.repeats_left = 0
@@ -58,6 +59,8 @@ class EzExplorerAgent(BaseAgent, ExperienceBufferMixin, ReprLearningMixin):
   def process_step_data(self, transition_data):
     if self.enable_repr_learning:
       self.process_repr_step(transition_data)
+    if self.track_experience:
+      self.append_buffer(transition_data)
 
   def sample_act(self, _):
     if self.repeats_left > 0:

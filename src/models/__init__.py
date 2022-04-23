@@ -1,2 +1,2 @@
 from .base import *
-from .activations import LTA
+from .activations import FTA
