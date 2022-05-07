@@ -5,8 +5,7 @@ import gym
 from torch import nn
 import wandb
 
-from src.models.base import DDDQNNetwork
-
+from ..models.base import DDDQNNetwork
 from ..agents.base import BaseRepresentationLearner
 from ..agents.representation import NextStatePredictor, SFPredictor
 from ..agents.exploration import EzExplorerAgent, MaxEntropyExplorerAgent, SurprisalExplorerAgent
