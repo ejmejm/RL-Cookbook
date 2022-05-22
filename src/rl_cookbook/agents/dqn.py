@@ -1,6 +1,5 @@
 import copy
 
-from sklearn.linear_model import GammaRegressor
 from .base import BaseAgent, ExperienceBufferMixin
 from ..envs.data import RewardNormalizer
 
