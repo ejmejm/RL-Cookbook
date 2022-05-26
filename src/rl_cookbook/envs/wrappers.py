@@ -117,6 +117,74 @@ class Scale1DObsWrapper(gym.ObservationWrapper):
     observation = (observation - obs_space.low) / obs_range
     return observation
 
+class Custom2DWrapper(gym.Wrapper):
+    def __init__(
+        self,
+        env,
+        frame_skip=1,
+        rescale_size=None,
+        grayscale_obs=False,
+        grayscale_newaxis=True,
+        scale_obs=True):
+      super().__init__(env)
+      assert frame_skip > 0
+
+      self.frame_skip = frame_skip
+      self.rescale = rescale_size is not None 
+      self.rescale_size = rescale_size
+      self.grayscale_obs = grayscale_obs
+      self.grayscale_newaxis = grayscale_newaxis
+      self.scale_obs = scale_obs
+
+      _low, _high, _obs_dtype = (
+          (0, 255, np.uint8) if not scale_obs else (0, 1, np.float32)
+      )
+      
+      if self.rescale:
+        _shape = (rescale_size, rescale_size, 1 if grayscale_obs else 3)
+      else:
+        _shape = (*self.observation_space.shape[:2], 1 if grayscale_obs else 3)
+        
+      if grayscale_obs and not grayscale_newaxis:
+          _shape = _shape[:-1]  # Remove channel axis
+      self.observation_space = gym.spaces.Box(
+          low=_low, high=_high, shape=_shape, dtype=_obs_dtype
+      )
+
+    def step(self, action):
+      R = 0.0
+      for _ in range(self.frame_skip):
+        obs, reward, done, info = self.env.step(action)
+        R += reward
+        self.game_over = done
+        if done:
+          break
+      return self._preprocess_obs(obs), R, done, info
+
+    def reset(self, **kwargs):
+      # NoopReset
+      obs = self.env.reset(**kwargs)
+      return self._preprocess_obs(obs)
+
+    def _preprocess_obs(self, obs):
+      # Resize the dimensions
+      if self.rescale:
+        obs = cv2.resize(obs, (self.rescale_size, self.rescale_size),
+                         interpolation=cv2.INTER_AREA)
+        
+      # Convert to grayscale
+      if self.grayscale_obs:
+        obs = np.sum(obs * np.array([[[0.2989, 0.5870, 0.1140]]]), axis=2,
+                     keepdims=self.grayscale_newaxis)
+      obs = obs.transpose(2, 0, 1)
+
+      # Rescale obs to [0, 1]
+      if self.scale_obs:
+        obs = obs / 255.0
+      
+      return obs
+
+
 ATARI_WRAPPERS = [
   lambda env: AtariPreprocessing(env, scale_obs=True),
   lambda env: FrameStack(env, N_FRAME_STACK),
@@ -127,4 +195,11 @@ GYM_1D_WRAPPERS = [
   lambda env: Scale1DObsWrapper(env),
   lambda env: FrameStack(env, N_FRAME_STACK),
   lambda env: TransformObservation(env, torch.FloatTensor)
+]
+
+PROCGEN_WRAPPERS = [
+  lambda env: Custom2DWrapper(env),
+  lambda env: FrameStack(env, N_FRAME_STACK),
+  lambda env: TransformObservation(env, torch.FloatTensor),
+  lambda env: TransformObservation(env, lambda x: x.view(-1, *x.shape[2:]))
 ]
