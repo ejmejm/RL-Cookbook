@@ -141,9 +141,9 @@ class Custom2DWrapper(gym.Wrapper):
       )
       
       if self.rescale:
-        _shape = (rescale_size, rescale_size, 1 if grayscale_obs else 3)
+        _shape = (1 if grayscale_obs else 3, rescale_size, rescale_size)
       else:
-        _shape = (*self.observation_space.shape[:2], 1 if grayscale_obs else 3)
+        _shape = (1 if grayscale_obs else 3, *self.observation_space.shape[:2])
         
       if grayscale_obs and not grayscale_newaxis:
           _shape = _shape[:-1]  # Remove channel axis
