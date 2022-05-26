@@ -199,7 +199,5 @@ GYM_1D_WRAPPERS = [
 
 PROCGEN_WRAPPERS = [
   lambda env: Custom2DWrapper(env),
-  lambda env: FrameStack(env, N_FRAME_STACK),
   lambda env: TransformObservation(env, torch.FloatTensor),
-  lambda env: TransformObservation(env, lambda x: x.view(-1, *x.shape[2:]))
 ]

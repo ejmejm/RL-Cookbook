@@ -3,8 +3,8 @@ from gym.wrappers import TimeLimit, TransformObservation
 import gym_gridworld
 import torch
 
-from wrappers import GridWorldWrapper, SimpleMapWrapper
-from wrappers import ATARI_WRAPPERS, PROCGEN_WRAPPERS, GYM_1D_WRAPPERS, N_FRAME_STACK
+from .wrappers import GridWorldWrapper, SimpleMapWrapper
+from .wrappers import ATARI_WRAPPERS, PROCGEN_WRAPPERS, GYM_1D_WRAPPERS, N_FRAME_STACK
 
 
 def create_gridworld_env(max_steps=500):
@@ -63,7 +63,7 @@ SUPPORTED_GYM_1D_ENVS = set([
 ])
 
 
-### Procgen ###
+### Procgen ### 
 
 
 def create_procgen_env(env_name):
@@ -93,13 +93,14 @@ def make_env(env_name):
     return create_atari_env(env_name)
   
 
-if __name__ == '__main__':
-  env = make_env('procgen:procgen-coinrun-v0')
-  print(env.observation_space)
-  obs = env.reset()
-  print(obs.shape, type(obs))
+# if __name__ == '__main__':
+#   # env = make_env('procgen:procgen-coinrun-v0')
+#   env = make_env('procgen:procgen-caveflyer-v0')
+#   print(env.observation_space)
+#   obs = env.reset()
+#   print(obs.shape, type(obs))
   
-  for i in range(3):
-    obs, r, _, _ = env.step(env.action_space.sample())
+#   for i in range(3):
+#     obs, r, _, _ = env.step(env.action_space.sample())
   
-  print(obs.shape, type(obs), obs.view(-1).min(), obs.view(-1).max(), r)
+#   print(obs.shape, type(obs), obs.reshape(-1).min(), obs.reshape(-1).max(), r)
