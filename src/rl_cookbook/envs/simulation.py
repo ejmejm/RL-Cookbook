@@ -6,6 +6,15 @@ from ..envs.data import DiscreteEntropyTracker
 
 
 def train_exploration_model(agent: BaseAgent, env, n_steps, print_rewards=True, print_freq=5000):
+  """Trains an exploration model in the given environment.
+
+  Args:
+    agent: The agent to train.
+    env: The environment to train in.
+    n_steps: Number of steps to train for.
+    print_rewards: Whether to print reward statistics.
+    print_freq: How often to print reward statistics.
+  """
   act_entropy_tracker = DiscreteEntropyTracker(env.action_space.n)
   agent.start_task(n_steps)
 
@@ -55,7 +64,16 @@ def train_exploration_model(agent: BaseAgent, env, n_steps, print_rewards=True, 
 
   agent.end_task()
 
-def train_task_model(agent, env, n_steps, print_rewards=True, print_freq=5000):
+def train_task_model(agent: BaseAgent, env, n_steps, print_rewards=True, print_freq=5000):
+  """Trains a task model in the given environment.
+
+  Args:
+    agent: The agent to train.
+    env: The environment to train in.
+    n_steps: Number of steps to train for.
+    print_rewards: Whether to print reward statistics.
+    print_freq: How often to print reward statistics.
+  """
   act_entropy_tracker = DiscreteEntropyTracker(env.action_space.n)
   agent.start_task(n_steps)
 

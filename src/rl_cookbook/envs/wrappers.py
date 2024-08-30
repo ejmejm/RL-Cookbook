@@ -10,6 +10,8 @@ import torch
 N_FRAME_STACK = 4
 
 class NoRewardWrapper(gym.RewardWrapper):
+  """Wrapper that sets all rewards to zero."""
+
   def __init__(self, env):
     super().__init__(env)
 
@@ -17,6 +19,8 @@ class NoRewardWrapper(gym.RewardWrapper):
     return 0
 
 class NoTerminationWrapper(gym.Wrapper):
+  """Wrapper that prevents episodes from terminating."""
+
   def __init__(self, env):
     super().__init__(env)
 
@@ -25,7 +29,14 @@ class NoTerminationWrapper(gym.Wrapper):
     return obs, reward, False, info
 
 class RandomTerminationWrapper(gym.Wrapper):
+  """Wrapper that adds a random chance of termination at each step."""
+
   def __init__(self, env, termination_chance=0.01):
+    """
+    Args:
+      env: The environment to wrap.
+      termination_chance: Probability of termination at each step.
+    """
     super().__init__(env)
     self.termination_chance = termination_chance
 
@@ -36,6 +47,8 @@ class RandomTerminationWrapper(gym.Wrapper):
     return obs, reward, done, info
 
 class GridWorldWrapper(gym.ObservationWrapper):
+  """Wrapper for GridWorld environments that converts observations to grayscale."""
+
   def __init__(self, env):
     super().__init__(env)
 
@@ -50,7 +63,15 @@ class GridWorldWrapper(gym.ObservationWrapper):
       return self.observation(obs), reward, done, info
 
 class SimpleMapWrapper(gym.ObservationWrapper):
+  """Wrapper that simplifies the map representation for GridWorld environments."""
+
   def __init__(self, env, randomized=False, map_shape=(16, 16)):
+    """
+    Args:
+      env: The environment to wrap.
+      randomized: Whether to use a randomized starting position.
+      map_shape: The shape of the simplified map.
+    """
     super().__init__(env)
     self.random_start = randomized
     self.env.unwrapped.obs_shape = map_shape + (3,)
@@ -85,8 +106,6 @@ class SimpleMapWrapper(gym.ObservationWrapper):
     uenv.agent_state = copy.deepcopy(uenv.agent_start_state)
 
   def observation(self, observation):
-    # observation = cv2.resize(observation, self.observation_space.shape[1:],
-    #                          interpolation=cv2.INTER_AREA)
     observation = np.expand_dims(observation, 0)
     self.formatted_obs = observation
     return observation
@@ -101,6 +120,8 @@ class SimpleMapWrapper(gym.ObservationWrapper):
     return super().reset()
 
 class Scale1DObsWrapper(gym.ObservationWrapper):
+  """Wrapper that scales 1D observations to the range [0, 1]."""
+
   def __init__(self, env):
     super().__init__(env)
 
@@ -109,7 +130,6 @@ class Scale1DObsWrapper(gym.ObservationWrapper):
         low=np.zeros(obs_shape), high=np.ones(obs_shape),
         shape=env.observation_space.shape, dtype=np.float32)
 
-  # Scales observations to [0, 1]
   def observation(self, observation):
     observation = observation.astype(np.float32)
     obs_space = self.observation_space
@@ -118,71 +138,78 @@ class Scale1DObsWrapper(gym.ObservationWrapper):
     return observation
 
 class Custom2DWrapper(gym.Wrapper):
-    def __init__(
-        self,
-        env,
-        frame_skip=1,
-        rescale_size=None,
-        grayscale_obs=False,
-        grayscale_newaxis=True,
-        scale_obs=True):
-      super().__init__(env)
-      assert frame_skip > 0
+  """A custom wrapper for 2D environments with various preprocessing options."""
 
-      self.frame_skip = frame_skip
-      self.rescale = rescale_size is not None 
-      self.rescale_size = rescale_size
-      self.grayscale_obs = grayscale_obs
-      self.grayscale_newaxis = grayscale_newaxis
-      self.scale_obs = scale_obs
+  def __init__(
+      self,
+      env,
+      frame_skip=1,
+      rescale_size=None,
+      grayscale_obs=False,
+      grayscale_newaxis=True,
+      scale_obs=True):
+    """
+    Args:
+      env: The environment to wrap.
+      frame_skip: Number of frames to skip.
+      rescale_size: Size to rescale the observation to.
+      grayscale_obs: Whether to convert observations to grayscale.
+      grayscale_newaxis: Whether to add a new axis for grayscale observations.
+      scale_obs: Whether to scale observations to [0, 1].
+    """
+    super().__init__(env)
+    assert frame_skip > 0
 
-      _low, _high, _obs_dtype = (
-          (0, 255, np.uint8) if not scale_obs else (0, 1, np.float32)
-      )
+    self.frame_skip = frame_skip
+    self.rescale = rescale_size is not None 
+    self.rescale_size = rescale_size
+    self.grayscale_obs = grayscale_obs
+    self.grayscale_newaxis = grayscale_newaxis
+    self.scale_obs = scale_obs
+
+    _low, _high, _obs_dtype = (
+        (0, 255, np.uint8) if not scale_obs else (0, 1, np.float32)
+    )
+    
+    if self.rescale:
+      _shape = (1 if grayscale_obs else 3, rescale_size, rescale_size)
+    else:
+      _shape = (1 if grayscale_obs else 3, *self.observation_space.shape[:2])
       
-      if self.rescale:
-        _shape = (1 if grayscale_obs else 3, rescale_size, rescale_size)
-      else:
-        _shape = (1 if grayscale_obs else 3, *self.observation_space.shape[:2])
-        
-      if grayscale_obs and not grayscale_newaxis:
-          _shape = _shape[:-1]  # Remove channel axis
-      self.observation_space = gym.spaces.Box(
-          low=_low, high=_high, shape=_shape, dtype=_obs_dtype
-      )
+    if grayscale_obs and not grayscale_newaxis:
+        _shape = _shape[:-1]  # Remove channel axis
+    self.observation_space = gym.spaces.Box(
+        low=_low, high=_high, shape=_shape, dtype=_obs_dtype
+    )
 
-    def step(self, action):
-      R = 0.0
-      for _ in range(self.frame_skip):
-        obs, reward, done, info = self.env.step(action)
-        R += reward
-        self.game_over = done
-        if done:
-          break
-      return self._preprocess_obs(obs), R, done, info
+  def step(self, action):
+    R = 0.0
+    for _ in range(self.frame_skip):
+      obs, reward, done, info = self.env.step(action)
+      R += reward
+      self.game_over = done
+      if done:
+        break
+    return self._preprocess_obs(obs), R, done, info
 
-    def reset(self, **kwargs):
-      # NoopReset
-      obs = self.env.reset(**kwargs)
-      return self._preprocess_obs(obs)
+  def reset(self, **kwargs):
+    obs = self.env.reset(**kwargs)
+    return self._preprocess_obs(obs)
 
-    def _preprocess_obs(self, obs):
-      # Resize the dimensions
-      if self.rescale:
-        obs = cv2.resize(obs, (self.rescale_size, self.rescale_size),
-                         interpolation=cv2.INTER_AREA)
-        
-      # Convert to grayscale
-      if self.grayscale_obs:
-        obs = np.sum(obs * np.array([[[0.2989, 0.5870, 0.1140]]]), axis=2,
-                     keepdims=self.grayscale_newaxis)
-      obs = obs.transpose(2, 0, 1)
-
-      # Rescale obs to [0, 1]
-      if self.scale_obs:
-        obs = obs / 255.0
+  def _preprocess_obs(self, obs):
+    if self.rescale:
+      obs = cv2.resize(obs, (self.rescale_size, self.rescale_size),
+                       interpolation=cv2.INTER_AREA)
       
-      return obs
+    if self.grayscale_obs:
+      obs = np.sum(obs * np.array([[[0.2989, 0.5870, 0.1140]]]), axis=2,
+                   keepdims=self.grayscale_newaxis)
+    obs = obs.transpose(2, 0, 1)
+
+    if self.scale_obs:
+      obs = obs / 255.0
+    
+    return obs
 
 
 ATARI_WRAPPERS = [

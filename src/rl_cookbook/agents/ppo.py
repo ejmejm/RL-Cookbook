@@ -10,6 +10,28 @@ import wandb
 
 
 class PPOAgent(BaseAgent, ExperienceBufferMixin):
+  """Proximal Policy Optimization (PPO) agent.
+
+  This agent implements the PPO algorithm for reinforcement learning.
+
+  Args:
+    env: The environment the agent interacts with.
+    policy: The policy network.
+    critic: The value function network.
+    calculate_rewards: Optional function to calculate custom rewards.
+    batch_size: Number of samples per batch for training.
+    update_freq: Number of steps between each policy update.
+    log_freq: Frequency of logging training statistics.
+    epsilon: Exploration rate for epsilon-greedy action selection.
+    lr: Learning rate for the optimizer.
+    gamma: Discount factor for future rewards.
+    ppo_iters: Number of epochs to optimize the surrogate objective.
+    ppo_clip: Clipping parameter for PPO.
+    value_coef: Coefficient for the value function loss.
+    entropy_coef: Coefficient for the entropy bonus.
+    normalize_rewards: Whether to normalize rewards.
+  """
+
   def __init__(self, env, policy, critic, calculate_rewards=None, batch_size=32,
                update_freq=128, log_freq=100, epsilon=0.05, lr=3e-4,
                gamma=0.99, ppo_iters=20, ppo_clip=0.2, value_coef=0.5,
@@ -45,10 +67,19 @@ class PPOAgent(BaseAgent, ExperienceBufferMixin):
       + list(self.critic.parameters()), lr=lr)
 
   def process_step_data(self, transition_data):
+    """Process a single step of experience data."""
     self.append_buffer(transition_data)
     self.step_idx += 1
 
   def sample_act(self, obs):
+    """Sample an action given an observation.
+
+    Args:
+      obs: The current observation.
+
+    Returns:
+      An action sampled from the policy.
+    """
     if np.random.rand() < self.epsilon:
       return np.random.randint(0, self.n_acts)
 
@@ -60,6 +91,7 @@ class PPOAgent(BaseAgent, ExperienceBufferMixin):
     return np.random.choice(self.n_acts, p=probs)
 
   def prepare_recent_batch_data(self):
+    """Prepare the most recent batch of data for training."""
     batch_data = self.get_buffer_recent_data(self.update_freq)
     self.clear_buffer()
     batch_data = [torch.tensor(e, dtype=torch.float32) \
@@ -68,6 +100,7 @@ class PPOAgent(BaseAgent, ExperienceBufferMixin):
     return batch_data
 
   def train(self):
+    """Perform a training update using the PPO algorithm."""
     self.policy.train()
 
     batch_data = self.prepare_recent_batch_data()
@@ -164,6 +197,7 @@ class PPOAgent(BaseAgent, ExperienceBufferMixin):
     return np.mean(policy_losses) + np.mean(critic_losses)
 
   def end_step(self):
+    """Perform end-of-step operations, including training and logging."""
     # Perform a training step
     if self.step_idx % self.update_freq == 0:
       self.train()

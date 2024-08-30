@@ -12,6 +12,26 @@ import wandb
 
 
 class DDDQNAgent(BaseAgent, ExperienceBufferMixin):
+  """Double Dueling Deep Q-Network (DDDQN) agent.
+
+  This agent implements the DDDQN algorithm, which combines Double Q-learning
+  and Dueling network architectures for improved performance in reinforcement learning tasks.
+
+  Args:
+    env: The environment to interact with.
+    model: The Q-network model.
+    batch_size: Number of samples per batch for training.
+    update_freq: Number of steps between each policy update.
+    log_freq: Frequency of logging training statistics.
+    lr: Learning rate for the optimizer.
+    epsilon: Exploration rate for epsilon-greedy action selection.
+    gamma: Discount factor for future rewards.
+    n_step: Number of steps for n-step returns.
+    target_update_freq: Frequency of target network updates.
+    learning_start: Number of steps before starting to learn.
+    normalize_rewards: Whether to normalize rewards.
+  """
+
   def __init__(self, env, model, calculate_rewards=None, batch_size=128,
                update_freq=1, log_freq=100, lr=3e-4, epsilon=0.05,
                gamma=0.99, n_step=12, target_update_freq=200, learning_start=1600,
@@ -48,10 +68,11 @@ class DDDQNAgent(BaseAgent, ExperienceBufferMixin):
     self.optimizer = optim.Adam(self.model.parameters(), lr=lr)
 
   def _update_target_network(self):
-      self.target_model = copy.deepcopy(self.model)
+    """Updates the target network by copying the current model."""
+    self.target_model = copy.deepcopy(self.model)
 
   def _gen_buffer_entry(self):
-    # Input transition data format: [obs, act, reward, next_obs, done]
+    """Generates a buffer entry from the n-step buffer."""
     n_step_reward = 0
     for i in range(len(self.n_step_buffer)):
         reward = self.n_step_buffer[i][2]
@@ -59,19 +80,14 @@ class DDDQNAgent(BaseAgent, ExperienceBufferMixin):
     next_gamma = self.gamma ** (i + 1)
     start_trans, end_trans = self.n_step_buffer[0], self.n_step_buffer[-1]
 
-    # Output transition data format: [obs, act, n_step_reward, final_obs, done, final_gamma]
     buffer_entry = [start_trans[0], start_trans[1], n_step_reward,
                     end_trans[3], end_trans[4], next_gamma]
 
     return buffer_entry
 
   def process_step_data(self, transition_data):
-    # Normalize the reward, then put it into the n_step_buffer
+    """Processes a step of data, adding it to the n-step buffer and experience replay."""
     if self.reward_normalizer is not None:
-      # TODO: Speed up reward normalization, when done every step this
-      # will probably take a noticeably amount of compute
-      # TODO: Reward normalization currently doesn't work well for this,
-      # need to figure out why and if theres a bug
       transition_data[2] = self.reward_normalizer.normalize([transition_data[2]])[0]
     
     self.n_step_buffer.append(transition_data)
@@ -83,6 +99,7 @@ class DDDQNAgent(BaseAgent, ExperienceBufferMixin):
     self.append_buffer(new_transition)
 
   def end_episode(self):
+    """Processes remaining transitions in n-step buffer at the end of an episode."""
     while len(self.n_step_buffer) > 1:
       self.n_step_buffer = self.n_step_buffer[1:]
       new_transition = self._gen_buffer_entry()
@@ -90,6 +107,7 @@ class DDDQNAgent(BaseAgent, ExperienceBufferMixin):
     self.n_step_buffer = []
 
   def sample_act(self, obs):
+    """Samples an action using epsilon-greedy strategy."""
     if np.random.rand() < self.epsilon:
       return np.random.randint(0, self.n_acts)
 
@@ -102,6 +120,7 @@ class DDDQNAgent(BaseAgent, ExperienceBufferMixin):
     return np.argmax(q_vals)
 
   def prepare_batch_data(self):
+    """Prepares a batch of data for training."""
     if len(self.exp_buffer) < self.batch_size:
         replace = True
     else:
@@ -114,6 +133,7 @@ class DDDQNAgent(BaseAgent, ExperienceBufferMixin):
     return batch_data
 
   def calculate_losses(self):
+    """Calculates the loss for a batch of data."""
     batch_data = self.prepare_batch_data()
     obs, acts, n_step_rewards, final_obs, terminals, final_gammas = batch_data
     final_q_values = self.model(final_obs)
@@ -132,6 +152,7 @@ class DDDQNAgent(BaseAgent, ExperienceBufferMixin):
     return losses
 
   def train(self):
+    """Performs a single training step."""
     self.model.train()
 
     losses = self.calculate_losses()
@@ -146,16 +167,14 @@ class DDDQNAgent(BaseAgent, ExperienceBufferMixin):
     return loss.item()
 
   def end_step(self):
-    # Perform a training step
+    """Performs end-of-step operations including training and target network updates."""
     if self.step_idx >= self.learning_start and \
        self.step_idx % self.update_freq == 0:
       self.train()
 
-    # Update the target network
     if self.step_idx % self.target_update_freq == 0:
         self._update_target_network()
 
-    # Log loss stats
     if self.log_freq > 0 and len(self.losses) >= self.log_freq:
       print('Step: {} | DDDQN loss: {:.4f}'.format(
           self.step_idx, np.mean(self.losses)))

@@ -11,6 +11,19 @@ from .Rainbow import ReplayMemory as RainbowMemory
 from .base import BaseAgent
 
 class RainbowAgent(BaseAgent):
+  """Rainbow DQN agent implementation.
+
+  This agent implements the Rainbow DQN algorithm, which combines several
+  improvements to the original DQN algorithm.
+
+  Args:
+    env: The environment to interact with.
+    args: Configuration arguments for the agent.
+    custom_encoder: Optional custom encoder network.
+    repr_learner: Optional representation learner.
+    tracked: Whether to track the model with wandb.
+  """
+
   def __init__(self, env, args, custom_encoder=None, repr_learner=None, tracked=False):
     self.args = args
     self.env = env
@@ -43,6 +56,11 @@ class RainbowAgent(BaseAgent):
       wandb.watch(self.dqn.target_net)
 
   def start_task(self, n_steps):
+    """Initializes the agent for a new task.
+
+    Args:
+      n_steps: Number of steps for the task.
+    """
     # Reset metrics and seeds
     self.metrics = {'steps': [], 'rewards': [], 'Qs': [],
                     'best_avg_reward': -float('inf')}
@@ -50,7 +68,6 @@ class RainbowAgent(BaseAgent):
     self.ep_rewards = []
 
     self.mem = RainbowMemory(self.args, self.args.memory_capacity, self.obs_dim)
-    # self.args.T_max = n_steps
     self.priority_weight_increase = (1 - self.args.priority_weight) \
       / (n_steps - self.args.learn_start)
 
@@ -62,13 +79,16 @@ class RainbowAgent(BaseAgent):
 
   def train_representation(self):
     raise NotImplementedError('Representation learning not implemented with Rainbow!')
-    # # TODO: This needs to be made into an unweighted sampling
-    # _, obs, acts, returns, next_obs, _, nonterminals = self.mem.sample(self.repr_learner.batch_size)
-    # acts = F.one_hot(acts, self.env.action_space.n)
-    # dones = 1 - nonterminals
-    # self.repr_learner.train([obs, acts, returns, next_obs, dones])
 
   def sample_act(self, obs):
+    """Samples an action from the agent's policy.
+
+    Args:
+      obs: The current observation.
+
+    Returns:
+      The selected action.
+    """
     if self.step_idx % self.args.replay_frequency == 0:
       self.dqn.reset_noise() # Draw a new set of noisy weights
 
@@ -78,6 +98,11 @@ class RainbowAgent(BaseAgent):
     return action
 
   def append_buffer(self, transition_data):
+    """Appends a transition to the replay buffer.
+
+    Args:
+      transition_data: A tuple containing (obs, action, reward, _, done).
+    """
     obs, action, reward, _, done = transition_data
     # Clip rewards
     if self.args.reward_clip > 0:
@@ -85,22 +110,27 @@ class RainbowAgent(BaseAgent):
     self.mem.append(obs, action, reward, done) # Append transition to memory
 
   def process_step_data(self, transition_data):
+    """Processes data from a single environment step."""
     self.ep_rewards.append(transition_data[2])
     self.append_buffer(transition_data)
 
   def end_episode(self):
+    """Performs end-of-episode operations."""
     self.all_rewards.append(sum(self.ep_rewards))
     self.ep_rewards = []
 
   def train(self):
+    """Performs a single training step.
+
+    Returns:
+      The loss value from the training step.
+    """
     loss = self.dqn.learn(self.mem)
     wandb.log({'task_agent_loss': loss})
     return loss
 
   def end_step(self):
-    # Train and test
-    # if self.step_idx % 500 == 0:
-    #   print('Step:', self.step_idx)
+    """Performs end-of-step operations, including training and updates."""
     if self.step_idx >= self.args.learn_start:
       # Anneal importance sampling weight β to 1
       self.mem.priority_weight = min(self.mem.priority_weight + \
@@ -122,7 +152,9 @@ class RainbowAgent(BaseAgent):
     self.step_idx += 1
 
   def train_mode(self):
+    """Sets the agent to training mode."""
     self.dqn.train()
 
   def eval_mode(self):
+    """Sets the agent to evaluation mode."""
     self.dqn.eval()

@@ -8,6 +8,14 @@ from .wrappers import ATARI_WRAPPERS, PROCGEN_WRAPPERS, GYM_1D_WRAPPERS, N_FRAME
 
 
 def create_gridworld_env(max_steps=500):
+  """Creates a GridWorld environment with specified maximum steps.
+
+  Args:
+    max_steps: Maximum number of steps allowed in the environment.
+
+  Returns:
+    A wrapped GridWorld environment.
+  """
   global N_FRAME_STACK
   N_FRAME_STACK = 1
 
@@ -18,6 +26,15 @@ def create_gridworld_env(max_steps=500):
   return env
 
 def create_simple_gridworld_env(randomized=False, max_steps=500):
+  """Creates a simple GridWorld environment.
+
+  Args:
+    randomized: Whether to use a randomized map.
+    max_steps: Maximum number of steps allowed in the environment.
+
+  Returns:
+    A wrapped simple GridWorld environment.
+  """
   env = create_gridworld_env(max_steps)
   env = SimpleMapWrapper(env, randomized)
   return env
@@ -27,6 +44,14 @@ def create_simple_gridworld_env(randomized=False, max_steps=500):
 
 
 def create_atari_env(env_name):
+  """Creates an Atari environment with standard wrappers.
+
+  Args:
+    env_name: Name of the Atari environment.
+
+  Returns:
+    A wrapped Atari environment.
+  """
   global N_FRAME_STACK
   N_FRAME_STACK = 4
 
@@ -36,9 +61,11 @@ def create_atari_env(env_name):
   return env
 
 def create_breakout_env():
+  """Creates a Breakout environment."""
   return create_atari_env('BreakoutNoFrameskip-v4')
 
 def create_crazy_climber_env():
+  """Creates a Crazy Climber environment."""
   return create_atari_env('CrazyClimberNoFrameskip-v4')
 
 
@@ -46,6 +73,17 @@ def create_crazy_climber_env():
 
 
 def create_gym_1d_env(env_name):
+  """Creates a 1D Gym environment with standard wrappers.
+
+  Args:
+    env_name: Name of the Gym environment.
+
+  Returns:
+    A wrapped 1D Gym environment.
+
+  Raises:
+    AssertionError: If the environment is not supported.
+  """
   assert env_name in SUPPORTED_GYM_1D_ENVS, \
     f'Unsupported gym 1d env: {env_name}'
 
@@ -67,6 +105,14 @@ SUPPORTED_GYM_1D_ENVS = set([
 
 
 def create_procgen_env(env_name):
+  """Creates a Procgen environment with standard wrappers.
+
+  Args:
+    env_name: Name of the Procgen environment.
+
+  Returns:
+    A wrapped Procgen environment.
+  """
   global N_FRAME_STACK
   N_FRAME_STACK = 3
 
@@ -80,6 +126,17 @@ def create_procgen_env(env_name):
 
 
 def make_env(env_name):
+  """Creates an environment based on the given name.
+
+  This function serves as a factory method for creating various types of
+  environments including GridWorld, Gym 1D, Procgen, and Atari.
+
+  Args:
+    env_name: Name of the environment to create.
+
+  Returns:
+    An instance of the specified environment.
+  """
   if 'gridworld' in env_name.lower():
     if 'random' in env_name.lower():
       return create_simple_gridworld_env(True)
